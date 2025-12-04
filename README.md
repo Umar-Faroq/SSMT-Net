@@ -14,6 +14,20 @@
 
 <img src="assets/T1.JPG" >
 
+# Performance
+
+<img src="assets/T2.JPG" >
+
+# Ablation study
+
+<img src="assets/Ablation_tn3k.jpg" >
+
+<img src="assets/T3.JPG" >
+
+# Robustness analysis with DDT
+
+<img src="assets/T4.JPG" >
+
 Accurate thyroid nodule segmentation in ultrasound images is essential for effective diagnosis and treatment planning. While multitask learning has shown promise in improving segmentation performance, several challenges remain unresolved: (a) scarcity of labeled data, (b) lack of integration of domain-specific prior knowledge, and (c) limited robustness in real-world clinical scenarios. To address these issues, we propose SSMT-Net, a Semi-Supervised Multi-task Transformer-based Network that leverages unlabeled data for an initial unsupervised pretraining phase. In the subsequent supervised phase, our model jointly optimizes thyroid nodule segmentation, thyroid gland segmentation, and nodule size estimation, effectively integrating both local and global contextual cues. This multitask formulation enables the model to generalize better and remain robust across variable clinical conditions. Evaluated on two public datasets, TN3K and DDTI, SSMT-Net sets a new benchmark in thyroid nodule segmentation, achieving up to 3.38% and 1.23% absolute improvements in IoU and DSC, respectively, compared to existing state-of-the-art methods.
 
 
