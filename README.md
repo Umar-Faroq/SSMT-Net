@@ -6,15 +6,15 @@
 <img src="assets/network.jpg" alt="SSMT-Net Overview" >
 
 
-# Challenging cases in thyroid ultrasound imaging
+# Ambiguous and low-contrast thyroid nodule cases in ultrasound imaging
 
 <img src="assets/Samples.jpg" >
 
-# Comparison with recent thyroid nodule segmentation models
+# Comparison with recent thyroid nodule segmentation approaches
 
 <img src="assets/T1.JPG" >
 
-# Performance
+# Comparative experimental results on the TN3K 
 
 <img src="assets/T2.JPG" >
 
