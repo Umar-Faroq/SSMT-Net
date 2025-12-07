@@ -1,4 +1,4 @@
-# [SSMT-Net: Semi-Supervised Multitask Transformer-Based Network for Thyroid Nodule Segmentation in Ultrasound Images](#)
+# 🌟 [SSMT-Net: Semi-Supervised Multitask Transformer-Based Network for Thyroid Nodule Segmentation in Ultrasound Images](#)
 
 # SSMT-Net Overview
 
