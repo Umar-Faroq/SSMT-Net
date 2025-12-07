@@ -13,19 +13,23 @@
                 <h1 class="title">SSMT-Net: A Semi-Supervised Multitask Transformer-Based Network for Thyroid Nodule Segmentation in Ultrasound Images</h1>
                 <div class="authors">
                     <div class="author">
-                        <span><a href="https://umar-faroq.github.io/" target="_blank">Muhammad Umar Farooq</a><sup>*</sup></span>
-                        <span class="affiliations">Hanyang University, Seoul, South Korea</span>
-                    </div>
-                    <div class="author">
-                        <span><a href="https://umar-faroq.github.io/" target="_blank">Muhammad Umar Farooq</a><sup>*</sup></span>
-                        <span class="affiliations">Hanyang University, Seoul, South Korea</span>
-                    </div>
-                    <div class="author">
-                        <span><a href="#" >Muhammad Umar Farooq</a></span>
-                        <span class="affiliations">Hanyang University, Seoul, South Korea</span>
-                    </div>
-                    <div class="author">
                         <span><a href="https://umar-faroq.github.io/" target="_blank">Muhammad Umar Farooq</a></span>
+                        <span class="affiliations">Hanyang University, Seoul, South Korea</span>
+                    </div>
+                    <div class="author">
+                        <span><a href="https://umar-faroq.github.io/" target="_blank">Abd Ur Rehman</a></span>
+                        <span class="affiliations">The University of Alabama Alabama, USA</span>
+                    </div>
+                    <div class="author">
+                        <span><a href="#" >Azka Rehman</a></span>
+                        <span class="affiliations">Seoul National University Seoul, South Korea</span>
+                    </div>
+                    <div class="author">
+                        <span><a href="https://umar-faroq.github.io/" target="_blank">Muhammad Usman</a></span>
+                        <span class="affiliations">Stanford University California, USA</span>
+                    </div>
+                    <div class="author">
+                        <span><a href="https://umar-faroq.github.io/" target="_blank">Dong-Kyu Chae</a><sup>*</sup></span>
                         <span class="affiliations">Hanyang University, Seoul, South Korea</span>
                     </div>
                 </div>
@@ -33,7 +37,7 @@
                     <span><sup>*</sup>Corresponding author</span>
                 </div>
                 <div class="publication-info">
-                    <span>Accepted @<a href="https://sites.google.com/view/miv-cvpr2025/accepted-papers?authuser=0" target="_blank">WACV 2026</a></span>
+                    <span>Accepted @<a href="https://wacv.thecvf.com/" target="_blank">WACV 2026</a></span>
                 </div>
             </div>
         </div>
@@ -44,18 +48,18 @@
             <main>
                 <section class="abstract">
                     <h2>Abstract</h2>
-                    <p>Vision-language foundation models (VLMs) have shown impressive performance in guiding image generation through text, with emerging applications in medical imaging. In this work, we are the first to investigate the question: 'Can fine-tuned foundation models help identify critical, and possibly unknown, data properties?' By evaluating our proposed method on a chest x-ray dataset, we show that these models can generate high-resolution, precisely edited images compared to methods that rely on Structural Causal Models (SCMs) according to numerous metrics. For the first time, we demonstrate that fine-tuned VLMs can reveal hidden data relationships that were previously obscured due to available metadata granularity and model capacity limitations. Our experiments demonstrate both the potential of these models to reveal underlying dataset properties while also exposing the limitations of fine-tuned VLMs for accurate image editing and susceptibility to biases and spurious correlations.</p>
+                    <p>Accurate thyroid nodule segmentation in ultrasound images is essential for effective diagnosis and treatment planning. While multitask learning has shown promise in improving segmentation performance, several challenges remain unresolved: (a) scarcity of labeled data, (b) lack of integration of domain-specific prior knowledge, and (c) limited robustness in real-world clinical scenarios. To address these issues, we propose SSMT-Net, a Semi-Supervised Multitask Transformer-based Network that leverages unlabeled data for an initial unsupervised pre-training phase. In the subsequent supervised phase, our model jointly optimizes thyroid nodule segmentation, thyroid gland segmentation, and nodule size estimation, effectively integrating both local and global contextual cues. This multitask formulation enables the model to generalize better and remain robust across variable clinical conditions. Evaluated on two public datasets, TN3K and DDTI, SSMT-Net sets a new benchmark in thyroid nodule segmentation, achieving up to 3.38% and 1.23% absolute improvements in IoU and DSC, respectively, compared to existing state-of-the-art methods. </p>
                 </section>
 
                 <section class="content-section" id="introduction">
                     <h2>1. Introduction</h2>
                     <p>Dataset biases present a significant challenge in the development of trustworthy machine learning models in healthcare applications. These biases can manifest as spurious correlations – misleading patterns between attributes of the data – which cause the model to learn incorrect associations that do not reflect true clinical relationships. For instance, algorithms trained on chest X-ray learned to classify pneumothorax based on the presence of a chest drain, which is inserted after pneumothorax diagnosis to treat it, and thus does not reflect the true pathological disease markers.</p>
-                    <p>Causal-based approaches aim to answer causal queries and consequentially overcome challenges with spurious correlations by explicitly enforcing attribute relationships within a causal framework. These methods incorporate causal principles by embedding Structural Causal Models (SCMs) into the generation process and adhering to Pearl's Causal Hierarchy Theorem (CHT) to generate results. However, many SCM-based methods still require external classifiers to function effectively. Moreover, despite their theoretical rigor, the assumptions these methods require for theoretical validity often become unrealistic in real-world applications.</p>
+                    <p>Causal-based approaches aim to answer causal queries and consequently overcome challenges with spurious correlations by explicitly enforcing attribute relationships within a causal framework. These methods incorporate causal principles by embedding Structural Causal Models (SCMs) into the generation process and adhering to Pearl's Causal Hierarchy Theorem (CHT) to generate results. However, many SCM-based methods still require external classifiers to function effectively. Moreover, despite their theoretical rigor, the assumptions these methods require for theoretical validity often become unrealistic in real-world applications.</p>
                     <p>Foundation models, trained on vast and diverse datasets, have demonstrated remarkable generative capabilities in both computer vision and medical imaging. Two significant breakthroughs are particularly relevant: (i) enhanced image generation capabilities that enables the generation of unprecedented high-resolution images, and (ii) precise targeted editing of specific image attributes.</p>
                     <p>In this work, we explore the strengths and limitations of fine-tuned VLMs in generating high-resolution, realistic medical images while analyzing their dependence on, and ability to reveal, underlying dataset properties.</p>
 
                     <div class="figure">
-                        <img src="images/intro.png" alt="Comparison of counterfactual generation">
+                        <img src="assets/Samples.jpg" alt="Comparison of counterfactual generation">
                         <div class="figure-caption">Comparison of counterfactual generation in the SOTA structural causal model (SCM) and a foundation vision-language model. </div>
                     </div>
                 </section>
