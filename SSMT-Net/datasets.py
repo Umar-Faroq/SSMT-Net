@@ -3,20 +3,21 @@ import random
 import numpy as np
 from glob import glob
 from PIL import Image
+import cv2
 
 import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 
-# Function to Load Image
+
 def load_image(path, size):
     """Loads an image, resizes it, converts to grayscale, and normalizes."""
-    image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)  # Directly load as grayscale
+    image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
     image = cv2.resize(image, (size, size))
-    image = image / 255.0  # Normalize to [0,1]
+    image = image / 255.0
     return image
 
-# Function to Load Data
+
 def load_data(image_folder, mask_folder, size):
     """Loads images and corresponding masks, and computes normalized areas."""
     images, masks, areas = [], [], []
@@ -28,7 +29,7 @@ def load_data(image_folder, mask_folder, size):
     mask_dict = {os.path.basename(p): p for p in mask_paths}
 
     for filename in image_dict.keys():
-        if filename in mask_dict:  # Ensure mask exists for this image
+        if filename in mask_dict:
             img = load_image(image_dict[filename], size)
             mask = load_image(mask_dict[filename], size)
             area = np.sum(mask)
@@ -38,19 +39,16 @@ def load_data(image_folder, mask_folder, size):
             areas.append(area)
 
     areas = np.array(areas)
-    min_area, max_area = areas.min(), areas.max()
-    normalized_areas = (areas - min_area) / (max_area - min_area + 1e-8)  # Avoid division by zero
     if areas.size > 0:
         min_area, max_area = areas.min(), areas.max()
         normalized_areas = (areas - min_area) / (max_area - min_area + 1e-8)
     else:
         print("areas array is empty. Cannot compute min/max.")
-        normalized_areas = np.array([])  # or set to None or a default value as appropriate
+        normalized_areas = np.array([])
 
-    # return np.array(images), np.array(masks)
     return np.array(images), np.array(masks), normalized_areas
 
-# Define dataset class
+
 class NoduleGlandDataset(Dataset):
     """Dataset for Nodule and Gland images and masks with augmentations."""
     
@@ -80,14 +78,12 @@ class NoduleGlandDataset(Dataset):
         nodule_img, nodule_mask, nodule_area = self.nodule_data[0][idx], self.nodule_data[1][idx], self.nodule_data[2][idx]
         gland_img, gland_mask, gland_area = self.gland_data[0][idx], self.gland_data[1][idx], self.gland_data[2][idx]
         
-        # Convert NumPy array to PIL Image before applying transforms
         nodule_img = Image.fromarray(nodule_img)
         nodule_mask = Image.fromarray(nodule_mask)
         gland_img = Image.fromarray(gland_img)
         gland_mask = Image.fromarray(gland_mask)
         
         if self.augment:
-            # Apply the same base augmentations to both image and mask
             seed = random.randint(0, 9999)
             torch.manual_seed(seed)
             nodule_img = self.base_transform(nodule_img)
@@ -97,7 +93,6 @@ class NoduleGlandDataset(Dataset):
             nodule_mask = self.base_transform(nodule_mask)
             gland_mask = self.base_transform(gland_mask)
         
-        # Convert image and mask to tensor
         nodule_img = self.tensor_transform(nodule_img)
         nodule_mask = self.mask_transform(nodule_mask)
         gland_img = self.tensor_transform(gland_img)
