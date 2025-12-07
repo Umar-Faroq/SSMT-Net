@@ -1,4 +1,3 @@
-# mim_transunet/models.py
 import math
 import torch
 import torch.nn as nn
@@ -6,7 +5,6 @@ import torch.nn.functional as F
 from collections import OrderedDict
 
 def get_b16_config():
-    """Returns the ViT-B/16 configuration."""
     config = ml_collections.ConfigDict()
     config.patches = ml_collections.ConfigDict({'size': (16, 16)})
     config.hidden_size = 768
@@ -20,7 +18,7 @@ def get_b16_config():
     config.classifier = 'seg'
     config.representation_size = None
     config.resnet_pretrained_path = None
-    config.pretrained_path = '/home/dilab/ext_drive/Thyroid_Nodule_segmentation/MIM-TransUNet/ViT-B_16.npz'
+    config.pretrained_path = './weights/ViT-B_16.npz'
     config.patch_size = 16
 
     config.decoder_channels = (256, 128, 64, 16)
@@ -30,7 +28,6 @@ def get_b16_config():
 
 
 def get_testing():
-    """Returns a minimal configuration for testing."""
     config = ml_collections.ConfigDict()
     config.patches = ml_collections.ConfigDict({'size': (16, 16)})
     config.hidden_size = 1
@@ -45,7 +42,6 @@ def get_testing():
     return config
 
 def get_r50_b16_config():
-    """Returns the Resnet50 + ViT-B/16 configuration."""
     config = get_b16_config()
     config.patches.grid = (16, 16)
     config.resnet = ml_collections.ConfigDict()
@@ -53,7 +49,7 @@ def get_r50_b16_config():
     config.resnet.width_factor = 1
 
     config.classifier = 'seg'
-    config.pretrained_path = '/home/dilab/ext_drive/Thyroid_Nodule_segmentation/MIM-TransUNet/R50+ViT-B_16.npz'
+    config.pretrained_path = './weights/R50+ViT-B_16.npz'
     config.decoder_channels = (256, 128, 64, 16)
     config.skip_channels = [512, 256, 64, 16]
     config.n_classes = 2
@@ -64,15 +60,13 @@ def get_r50_b16_config():
 
 
 def get_b32_config():
-    """Returns the ViT-B/32 configuration."""
     config = get_b16_config()
     config.patches.size = (32, 32)
-    config.pretrained_path = '/home/dilab/ext_drive/Thyroid_Nodule_segmentation/MIM-TransUNet/ViT-B_32.npz'
+    config.pretrained_path = './weights/ViT-B_32.npz'
     return config
 
 
 def get_l16_config():
-    """Returns the ViT-L/16 configuration."""
     config = ml_collections.ConfigDict()
     config.patches = ml_collections.ConfigDict({'size': (16, 16)})
     config.hidden_size = 1024
@@ -84,10 +78,9 @@ def get_l16_config():
     config.transformer.dropout_rate = 0.1
     config.representation_size = None
 
-    # custom
     config.classifier = 'seg'
     config.resnet_pretrained_path = None
-    config.pretrained_path = '/home/dilab/ext_drive/Thyroid_Nodule_segmentation/MIM-TransUNet/ViT-L_16.npz'
+    config.pretrained_path = './weights/ViT-L_16.npz'
     config.decoder_channels = (256, 128, 64, 16)
     config.n_classes = 2
     config.activation = 'softmax'
@@ -95,7 +88,6 @@ def get_l16_config():
 
 
 def get_r50_l16_config():
-    """Returns the Resnet50 + ViT-L/16 configuration. customized """
     config = get_l16_config()
     config.patches.grid = (16, 16)
     config.resnet = ml_collections.ConfigDict()
@@ -103,7 +95,7 @@ def get_r50_l16_config():
     config.resnet.width_factor = 1
 
     config.classifier = 'seg'
-    config.resnet_pretrained_path = '/home/dilab/ext_drive/Thyroid_Nodule_segmentation/MIM-TransUNet/R50+ViT-B_16.npz'
+    config.resnet_pretrained_path = './weights/R50+ViT-B_16.npz'
     config.decoder_channels = (256, 128, 64, 16)
     config.skip_channels = [512, 256, 64, 16]
     config.n_classes = 2
@@ -112,14 +104,12 @@ def get_r50_l16_config():
 
 
 def get_l32_config():
-    """Returns the ViT-L/32 configuration."""
     config = get_l16_config()
     config.patches.size = (32, 32)
     return config
 
 
 def get_h14_config():
-    """Returns the ViT-L/16 configuration."""
     config = ml_collections.ConfigDict()
     config.patches = ml_collections.ConfigDict({'size': (14, 14)})
     config.hidden_size = 1280
@@ -135,7 +125,6 @@ def get_h14_config():
     return config
 
 def np2th(weights, conv=False):
-    """Possibly convert HWIO to OIHW."""
     if conv:
         weights = weights.transpose([3, 2, 0, 1])
     return torch.from_numpy(weights)
@@ -162,8 +151,7 @@ def conv1x1(cin, cout, stride=1, bias=False):
 
 
 class PreActBottleneck(nn.Module):
-    """Pre-activation (v2) bottleneck block.
-    """
+    """Pre-activation (v2) bottleneck block."""
 
     def __init__(self, cin, cout=None, cmid=None, stride=1):
         super().__init__()
@@ -173,25 +161,21 @@ class PreActBottleneck(nn.Module):
         self.gn1 = nn.GroupNorm(32, cmid, eps=1e-6)
         self.conv1 = conv1x1(cin, cmid, bias=False)
         self.gn2 = nn.GroupNorm(32, cmid, eps=1e-6)
-        self.conv2 = conv3x3(cmid, cmid, stride, bias=False)  # Original code has it on conv1!!
+        self.conv2 = conv3x3(cmid, cmid, stride, bias=False)
         self.gn3 = nn.GroupNorm(32, cout, eps=1e-6)
         self.conv3 = conv1x1(cmid, cout, bias=False)
         self.relu = nn.ReLU(inplace=True)
 
         if (stride != 1 or cin != cout):
-            # Projection also with pre-activation according to paper.
             self.downsample = conv1x1(cin, cout, stride, bias=False)
             self.gn_proj = nn.GroupNorm(cout, cout)
 
     def forward(self, x):
-
-        # Residual branch
         residual = x
         if hasattr(self, 'downsample'):
             residual = self.downsample(x)
             residual = self.gn_proj(residual)
 
-        # Unit's branch
         y = self.relu(self.gn1(self.conv1(x)))
         y = self.relu(self.gn2(self.conv2(y)))
         y = self.gn3(self.conv3(y))
@@ -236,7 +220,6 @@ class PreActBottleneck(nn.Module):
             self.gn_proj.bias.copy_(proj_gn_bias.view(-1))
 
 class ResNetV2(nn.Module):
-    """Implementation of Pre-activation (v2) ResNet mode."""
 
     def __init__(self, block_units, width_factor):
         super().__init__()
@@ -247,7 +230,6 @@ class ResNetV2(nn.Module):
             ('conv', StdConv2d(3, width, kernel_size=7, stride=2, bias=False, padding=3)),
             ('gn', nn.GroupNorm(32, width, eps=1e-6)),
             ('relu', nn.ReLU(inplace=True)),
-            # ('pool', nn.MaxPool2d(kernel_size=3, stride=2, padding=0))
         ]))
 
         self.body = nn.Sequential(OrderedDict([
@@ -299,7 +281,6 @@ MLP_NORM = "LayerNorm_2"
 
 
 def np2th(weights, conv=False):
-    """Possibly convert HWIO to OIHW."""
     if conv:
         weights = weights.transpose([3, 2, 0, 1])
     return torch.from_numpy(weights)
@@ -385,15 +366,14 @@ class Mlp(nn.Module):
 
 
 class Embeddings(nn.Module):
-    """Construct the embeddings from patch, position embeddings.
-    """
+
     def __init__(self, config, img_size, in_channels=3):
         super(Embeddings, self).__init__()
         self.hybrid = None
         self.config = config
         img_size = _pair(img_size)
 
-        if config.patches.get("grid") is not None:   # ResNet
+        if config.patches.get("grid") is not None:
             grid_size = config.patches["grid"]
             patch_size = (img_size[0] // 16 // grid_size[0], img_size[1] // 16 // grid_size[1])
             patch_size_real = (patch_size[0] * 16, patch_size[1] * 16)
@@ -421,9 +401,9 @@ class Embeddings(nn.Module):
             x, features = self.hybrid_model(x)
         else:
             features = None
-        x = self.patch_embeddings(x)  # (B, hidden. n_patches^(1/2), n_patches^(1/2))
+        x = self.patch_embeddings(x)
         x = x.flatten(2)
-        x = x.transpose(-1, -2)  # (B, n_patches, hidden)
+        x = x.transpose(-1, -2)
 
         embeddings = x + self.position_embeddings
         embeddings = self.dropout(embeddings)
@@ -517,7 +497,7 @@ class Transformer(nn.Module):
 
     def forward(self, input_ids):
         embedding_output, features = self.embeddings(input_ids)
-        encoded, attn_weights = self.encoder(embedding_output)  # (B, n_patch, hidden)
+        encoded, attn_weights = self.encoder(embedding_output)
         return encoded, attn_weights, features
 
 
@@ -606,7 +586,7 @@ class DecoderCup(nn.Module):
 
         if self.config.n_skip != 0:
             skip_channels = self.config.skip_channels
-            for i in range(4-self.config.n_skip):  # re-select the skip channels according to n_skip
+            for i in range(4-self.config.n_skip):
                 skip_channels[3-i]=0
 
         else:
@@ -618,7 +598,7 @@ class DecoderCup(nn.Module):
         self.blocks = nn.ModuleList(blocks)
 
     def forward(self, hidden_states, features=None):
-        B, n_patch, hidden = hidden_states.size()  # reshape from (B, n_patch, hidden) to (B, h, w, hidden)
+        B, n_patch, hidden = hidden_states.size()
         h, w = int(np.sqrt(n_patch)), int(np.sqrt(n_patch))
         x = hidden_states.permute(0, 2, 1)
         x = x.contiguous().view(B, hidden, h, w)
@@ -630,17 +610,9 @@ class DecoderCup(nn.Module):
                 skip = None
             x = decoder_block(x, skip=skip)
         return x
-class TransformerDecoderLayer2D(nn.Module):
-    """
-    A standard Transformer decoder layer:
-        - self-attention on queries
-        - cross-attention queries ↔ spatial feature tokens
-        - feed-forward network
 
-    Inputs:
-        tgt:    (B, N, d_model)  - query embeddings
-        memory: (B, HW, d_model) - flattened CNN feature map
-    """
+class TransformerDecoderLayer2D(nn.Module):
+
     def __init__(self, d_model, nhead, dim_feedforward=1024, dropout=0.1):
         super().__init__()
         self.self_attn = nn.MultiheadAttention(
@@ -650,7 +622,6 @@ class TransformerDecoderLayer2D(nn.Module):
             d_model, nhead, dropout=dropout, batch_first=True
         )
 
-        # Feed-forward
         self.linear1 = nn.Linear(d_model, dim_feedforward)
         self.linear2 = nn.Linear(dim_feedforward, d_model)
 
@@ -665,20 +636,15 @@ class TransformerDecoderLayer2D(nn.Module):
         self.activation = nn.GELU()
 
     def forward(self, tgt, memory):
-        # tgt: (B, N, d_model), memory: (B, HW, d_model)
-
-        # 1) self-attention on queries
         q = k = tgt
         attn_output, _ = self.self_attn(q, k, tgt)
         tgt = tgt + self.dropout1(attn_output)
         tgt = self.norm1(tgt)
 
-        # 2) cross-attention: queries attend to spatial features
         attn_output, _ = self.cross_attn(tgt, memory, memory)
         tgt = tgt + self.dropout2(attn_output)
         tgt = self.norm2(tgt)
 
-        # 3) feed-forward
         ff = self.linear2(self.activation(self.linear1(tgt)))
         tgt = tgt + self.dropout3(ff)
         tgt = self.norm3(tgt)
@@ -686,15 +652,7 @@ class TransformerDecoderLayer2D(nn.Module):
         return tgt
 
 class QueryTransformerDecoder2D(nn.Module):
-    """
-    2D query-based transformer decoder head (simplified 3D-TransUNet style).
 
-    - Takes a high-resolution feature map F: (B, C_feat, H, W)
-    - Projects to d_model
-    - Uses N learnable queries refined by a stack of decoder layers
-    - Predicts per-query class logits + masks
-    - Aggregates queries into a single segmentation logit map (for binary task)
-    """
     def __init__(
         self,
         d_model: int,
@@ -711,13 +669,9 @@ class QueryTransformerDecoder2D(nn.Module):
         self.num_classes = num_classes
         self.num_queries = num_queries
 
-        # Project CNN feature map → decoder dimension
         self.input_proj = nn.Conv2d(feat_channels, d_model, kernel_size=1)
-
-        # Learnable query embeddings (N, d_model)
         self.query_embed = nn.Embedding(num_queries, d_model)
 
-        # Stack of decoder layers
         self.layers = nn.ModuleList([
             TransformerDecoderLayer2D(
                 d_model=d_model,
@@ -728,12 +682,8 @@ class QueryTransformerDecoder2D(nn.Module):
             for _ in range(num_layers)
         ])
 
-        # Heads:
-        #   - class head: per-query logits over classes
-        #   - mask head: per-query embedding used to produce mask logits
         self.class_embed = nn.Linear(d_model, num_classes)
 
-        # Small MLP to produce mask embeddings
         self.mask_embed = nn.Sequential(
             nn.Linear(d_model, d_model),
             nn.ReLU(inplace=True),
@@ -741,61 +691,30 @@ class QueryTransformerDecoder2D(nn.Module):
         )
 
     def forward(self, feat):
-        """
-        feat: (B, C_feat, H, W) - e.g. output of DecoderCup
-
-        Returns:
-          final_logits: (B, num_classes, H, W) - aggregated segmentation logits
-          masks_all:    (B, num_queries, H, W) - raw per-query masks (optional for debugging)
-          class_logits: (B, num_queries, num_classes)
-        """
         B, C, H, W = feat.shape
 
-        # 1) project features to d_model
-        feat_proj = self.input_proj(feat)          # (B, d_model, H, W)
-        feat_tokens = feat_proj.flatten(2).transpose(1, 2)  # (B, HW, d_model)
+        feat_proj = self.input_proj(feat)
+        feat_tokens = feat_proj.flatten(2).transpose(1, 2)
 
-        # 2) init queries
-        queries = self.query_embed.weight.unsqueeze(0).repeat(B, 1, 1)  # (B, N, d_model)
+        queries = self.query_embed.weight.unsqueeze(0).repeat(B, 1, 1)
 
-        # 3) run through decoder layers
         for layer in self.layers:
-            queries = layer(queries, feat_tokens)  # (B, N, d_model)
+            queries = layer(queries, feat_tokens)
 
-        # 4) predict classes per query
-        class_logits = self.class_embed(queries)  # (B, N, num_classes)
-
-        # 5) predict masks per query
-        mask_embed = self.mask_embed(queries)     # (B, N, d_model)
-        #    feat_proj: (B, d_model, H, W)
-        masks = torch.einsum("bnd,bdhw->bnhw", mask_embed, feat_proj)  # (B, N, H, W)
-
-        # 6) aggregate queries → final logits (for semantic segmentation)
-
-        # For your thyroid task you currently use n_classes=2 (background, nodule).
-        # We'll do:
-        #   - use the query class logits for "nodule" (index 1) as weights
-        #   - softmax over queries
-        #   - weighted sum of per-query mask logits
+        class_logits = self.class_embed(queries)
+        mask_embed = self.mask_embed(queries)
+        masks = torch.einsum("bnd,bdhw->bnhw", mask_embed, feat_proj)
 
         if self.num_classes == 1:
-            # Pure binary: single-channel output (sigmoid later)
-            # Just average all queries’ masks
-            final_logits = masks.mean(dim=1, keepdim=True)  # (B, 1, H, W)
-
+            final_logits = masks.mean(dim=1, keepdim=True)
         else:
-            # Assume channel 1 is "nodule" / foreground
-            fg_logit = class_logits[..., 1]  # (B, N)
-            # Stabilize:
-            weights = torch.softmax(fg_logit, dim=1)  # (B, N)
-            weights = weights.unsqueeze(-1).unsqueeze(-1)  # (B, N, 1, 1)
+            fg_logit = class_logits[..., 1]
+            weights = torch.softmax(fg_logit, dim=1)
+            weights = weights.unsqueeze(-1).unsqueeze(-1)
 
-            # Weighted sum over queries → 1×HxW foreground logit
-            fg_mask = (masks * weights).sum(dim=1, keepdim=True)  # (B, 1, H, W)
-
-            # Background logit as negative (simple but works reasonably)
+            fg_mask = (masks * weights).sum(dim=1, keepdim=True)
             bg_mask = -fg_mask
-            final_logits = torch.cat([bg_mask, fg_mask], dim=1)  # (B, 2, H, W)
+            final_logits = torch.cat([bg_mask, fg_mask], dim=1)
 
         return final_logits, masks, class_logits
 
@@ -818,7 +737,7 @@ class VisionTransformer(nn.Module):
     def forward(self, x):
         if x.size()[1] == 1:
             x = x.repeat(1,3,1,1)
-        x, attn_weights, features = self.transformer(x)  # (B, n_patch, hidden)
+        x, attn_weights, features = self.transformer(x)
         x = self.decoder(x, features)
         logits = self.segmentation_head(x)
         return logits
@@ -851,12 +770,11 @@ class VisionTransformer(nn.Module):
                 print('load_pretrained: grid-size from %s to %s' % (gs_old, gs_new))
                 posemb_grid = posemb_grid.reshape(gs_old, gs_old, -1)
                 zoom = (gs_new / gs_old, gs_new / gs_old, 1)
-                posemb_grid = ndimage.zoom(posemb_grid, zoom, order=1)  # th2np
+                posemb_grid = ndimage.zoom(posemb_grid, zoom, order=1)
                 posemb_grid = posemb_grid.reshape(1, gs_new * gs_new, -1)
                 posemb = posemb_grid
                 self.transformer.embeddings.position_embeddings.copy_(np2th(posemb))
 
-            # Encoder whole
             for bname, block in self.transformer.encoder.named_children():
                 for uname, unit in block.named_children():
                     unit.load_from(weights, n_block=uname)
@@ -884,15 +802,10 @@ CONFIGS = {
 }
 
 class Upsample(nn.Sequential):
-    """Upsample module.
 
-    Args:
-        scale (int): Scale factor. Supported scales: 2^n and 3.
-        num_feat (int): Channel number of intermediate features.
-    """
     def __init__(self, scale, num_feat):
         m = []
-        if (scale & (scale - 1)) == 0:  # scale = 2^n
+        if (scale & (scale - 1)) == 0:
             for _ in range(int(math.log(scale, 2))):
                 m.append(nn.Conv2d(num_feat, 4 * num_feat, 3, 1, 1))
                 m.append(nn.PixelShuffle(2))
@@ -900,19 +813,11 @@ class Upsample(nn.Sequential):
             m.append(nn.Conv2d(num_feat, 9 * num_feat, 3, 1, 1))
             m.append(nn.PixelShuffle(3))
         else:
-            raise ValueError(f'scale {scale} is not supported. ' 'Supported scales: 2^n and 3.')
+            raise ValueError(f'scale {scale} is not supported. Supported scales: 2^n and 3.')
         super(Upsample, self).__init__(*m)
 
 class UpsampleOneStep(nn.Sequential):
-    """UpsampleOneStep module.
-       Used in lightweight SR to save parameters.
 
-    Args:
-        scale (int): Scale factor. Supported scales: 2^n and 3.
-        num_feat (int): Channel number of intermediate features.
-        num_out_ch (int): Number of output channels.
-        input_resolution (tuple[int, int], optional): Resolution of input image.
-    """
     def __init__(self, scale, num_feat, num_out_ch, input_resolution=None):
         self.num_feat = num_feat
         self.input_resolution = input_resolution
@@ -922,48 +827,6 @@ class UpsampleOneStep(nn.Sequential):
         super(UpsampleOneStep, self).__init__(*m)
 
 class ReconstructionDecoder(nn.Module):
-    def __init__(self, embed_dim, num_feat, num_out_ch, upsampler, upscale, patches_resolution):
-        super(ReconstructionDecoder, self).__init__()
-        self.upsampler = upsampler
-        self.upscale = upscale
-        self.patches_resolution = patches_resolution
-
-        if upsampler == 'pixelshuffle':
-            self.conv_before_upsample = nn.Sequential(nn.Conv2d(embed_dim, num_feat, 3, 1, 1),
-                                                      nn.LeakyReLU(inplace=True))
-            self.upsample = Upsample(upscale, num_feat)
-            self.conv_last = nn.Conv2d(num_feat, num_out_ch, 3, 1, 1)
-        elif upsampler == 'pixelshuffledirect':
-            self.upsample = UpsampleOneStep(upscale, embed_dim, num_out_ch,
-                                            (patches_resolution[0], patches_resolution[1]))
-        elif upsampler == 'nearest+conv':
-            self.conv_before_upsample = nn.Sequential(nn.Conv2d(embed_dim, num_feat, 3, 1, 1),
-                                                      nn.LeakyReLU(inplace=True))
-            self.conv_up1 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
-            if upscale == 4:
-                self.conv_up2 = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
-            self.conv_hr = nn.Conv2d(num_feat, num_feat, 3, 1, 1)
-            self.conv_last = nn.Conv2d(num_feat, num_out_ch, 3, 1, 1)
-            self.lrelu = nn.LeakyReLU(negative_slope=0.2, inplace=True)
-        else:
-            self.conv_last = nn.Conv2d(embed_dim, num_out_ch, 3, 1, 1)
-
-    def forward(self, x):
-        if self.upsampler == 'pixelshuffle':
-            x = self.conv_before_upsample(x)
-            x = self.conv_last(self.upsample(x))
-        elif self.upsampler == 'pixelshuffledirect':
-            x = self.upsample(x)
-        elif self.upsampler == 'nearest+conv':
-            x = self.conv_before_upsample(x)
-            x = self.lrelu(self.conv_up1(F.interpolate(x, scale_factor=2, mode='nearest')))
-            if self.upscale == 4:
-                x = self.lrelu(self.conv_up2(F.interpolate(x, scale_factor=2, mode='nearest')))
-            x = self.conv_last(self.lrelu(self.conv_hr(x)))
-        else:
-            x = self.conv_last(x)
-        return x
-class ReconstructionDecoder(nn.Module):
     def __init__(self, embed_dim, num_feat, num_out_ch, upsampler, upscale, patches_resolution, img_size):
         super(ReconstructionDecoder, self).__init__()
         self.upsampler = upsampler
@@ -971,7 +834,7 @@ class ReconstructionDecoder(nn.Module):
         self.patches_resolution = patches_resolution
         self.embed_dim = embed_dim
         self.num_feat = num_feat
-        self.img_size = img_size  # Store original image size
+        self.img_size = img_size
 
         if upsampler == 'pixelshuffle':
             self.conv_before_upsample = nn.Sequential(
@@ -984,7 +847,6 @@ class ReconstructionDecoder(nn.Module):
             self.conv_last = nn.Conv2d(embed_dim, num_out_ch, 3, 1, 1)
 
     def forward(self, x):
-        # Reshape input (B, N, C) -> (B, C, H, W)
         B, N, C = x.shape
         H, W = self.patches_resolution
 
@@ -996,7 +858,6 @@ class ReconstructionDecoder(nn.Module):
         else:
             x = self.conv_last(x)
 
-        # Ensure the final output matches the original image size
         x = F.interpolate(x, size=self.img_size, mode="bilinear", align_corners=False)
 
         return x
@@ -1016,11 +877,10 @@ class VisionTransformerWithReconstruction(nn.Module):
             kernel_size=3,
         )
 
-        # Pass original image size to reconstruction decoder
         self.reconstruction_decoder = ReconstructionDecoder(
             embed_dim=config.hidden_size, num_feat=64, num_out_ch=config['n_classes'],
             upsampler='pixelshuffle', upscale=2, patches_resolution=(img_size // 16, img_size // 16),
-            img_size=(img_size, img_size)  # Ensure it restores to the original input size
+            img_size=(img_size, img_size)
         )
         self.config = config
 
@@ -1030,7 +890,6 @@ class VisionTransformerWithReconstruction(nn.Module):
         
         x, attn_weights, features = self.transformer(x)
 
-        # Ensure the reconstruction output matches input dimensions
         reconstruction_output = self.reconstruction_decoder(x)
 
         segmentation_output = self.decoder(x, features)
@@ -1048,13 +907,11 @@ class VisionTransformerWithDualSegmentation(nn.Module):
         self.classifier = config.classifier
         self.transformer = Transformer(config, img_size, vis)
         
-        # First segmentation decoder
         self.seg_decoder1 = DecoderCup(config)
-        # === NEW: transformer decoder head for nodule segmentation ===
         self.query_decoder1 = QueryTransformerDecoder2D(
             d_model=config.hidden_size,
-            feat_channels=config.decoder_channels[-1],  # output channels of DecoderCup
-            num_classes=config.n_classes,              # you set this to 2 earlier
+            feat_channels=config.decoder_channels[-1],
+            num_classes=config.n_classes,
             num_queries=8,
             nhead=8,
             num_layers=3,
@@ -1062,7 +919,6 @@ class VisionTransformerWithDualSegmentation(nn.Module):
             dropout=0.1,
         )
         
-        # Second segmentation decoder
         self.seg_decoder2 = DecoderCup(config)
         self.segmentation_head2 = SegmentationHead(
             in_channels=config['decoder_channels'][-1],
@@ -1070,14 +926,12 @@ class VisionTransformerWithDualSegmentation(nn.Module):
             kernel_size=3,
         )
         
-        # Reconstruction decoder
         self.reconstruction_decoder = ReconstructionDecoder(
             embed_dim=config.hidden_size, num_feat=64, num_out_ch=config['n_classes'],
             upsampler='pixelshuffle', upscale=2, patches_resolution=(img_size // 16, img_size // 16),
             img_size=(img_size, img_size)
         )
         
-        # Fully connected layer for nodule area prediction (deeper network)
         self.nodule_area_fc = nn.Sequential(
             nn.Linear(config.hidden_size, 256),
             nn.ReLU(),
@@ -1085,7 +939,7 @@ class VisionTransformerWithDualSegmentation(nn.Module):
             nn.ReLU(),
             nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Linear(64, 1)  # Output a single value for nodule area
+            nn.Linear(64, 1)
         )
         
         self.config = config
@@ -1094,31 +948,19 @@ class VisionTransformerWithDualSegmentation(nn.Module):
         if x.size()[1] == 1:
             x = x.repeat(1, 3, 1, 1)
 
-        # ViT encoder (same as before)
-        x, attn_weights, features = self.transformer(x)  # x: (B, n_patches, hidden)
+        x, attn_weights, features = self.transformer(x)
 
-        # === 1) Nodule segmentation with transformer decoder ===
-        # CNN decoder to get high-res 2D feature map
-        seg_feat1 = self.seg_decoder1(x, features)   # (B, C_dec, H, W)
-
-        # Query-based transformer decoder head
+        seg_feat1 = self.seg_decoder1(x, features)
         logits1, masks1, class_logits1 = self.query_decoder1(seg_feat1)
-        # logits1: (B, n_classes, H, W)
-        # masks1, class_logits1 are optional extra outputs for analysis
 
-        # === 2) Gland segmentation kept as original (for now) ===
         seg_output2 = self.seg_decoder2(x, features)
         logits2 = self.segmentation_head2(seg_output2)
 
-        # === 3) Reconstruction and area regression (unchanged) ===
         reconstruction_output = self.reconstruction_decoder(x)
-
-        # NOTE: x[:, 0, :] is NOT a CLS token in your current code;
-        # it's just the first patch token. If you truly want a CLS token,
-        # we would have to modify Embeddings to prepend one.
         nodule_area = self.nodule_area_fc(x[:, 0, :])
 
         return logits1, logits2, reconstruction_output, nodule_area
+    
     def load_from(self, weights):
         with torch.no_grad():
 
@@ -1147,12 +989,11 @@ class VisionTransformerWithDualSegmentation(nn.Module):
                 print('load_pretrained: grid-size from %s to %s' % (gs_old, gs_new))
                 posemb_grid = posemb_grid.reshape(gs_old, gs_old, -1)
                 zoom = (gs_new / gs_old, gs_new / gs_old, 1)
-                posemb_grid = ndimage.zoom(posemb_grid, zoom, order=1)  # th2np
+                posemb_grid = ndimage.zoom(posemb_grid, zoom, order=1)
                 posemb_grid = posemb_grid.reshape(1, gs_new * gs_new, -1)
                 posemb = posemb_grid
                 self.transformer.embeddings.position_embeddings.copy_(np2th(posemb))
 
-            # Encoder whole
             for bname, block in self.transformer.encoder.named_children():
                 for uname, unit in block.named_children():
                     unit.load_from(weights, n_block=uname)
@@ -1183,17 +1024,14 @@ def get_dual_segmentation_network(vit_name='R50-ViT-B_16', img_size=224, num_cla
         num_classes=num_classes
     )
 
-    # ✅ Load pretrained encoder weights if path is provided
     if hasattr(config_vit, "pretrained_path") and config_vit.pretrained_path is not None:
         print(f"Loading pretrained encoder from: {config_vit.pretrained_path}")
         weights = np.load(config_vit.pretrained_path)
         net.load_from(weights)
 
     return net
+
 def get_network(vit_name='R50-ViT-B_16', img_size=224, num_classes=2, n_skip=3, vit_patches_size=16):
-    """
-    Initializes the Vision Transformer-based segmentation network with added HQ Reconstruction.
-    """
     config_vit = CONFIGS[vit_name]
     config_vit.n_classes = num_classes
     config_vit.n_skip = n_skip
@@ -1208,50 +1046,25 @@ def get_network(vit_name='R50-ViT-B_16', img_size=224, num_classes=2, n_skip=3, 
 
     return net
 
-# Training Function
 
 class DiceLoss(nn.Module):
-    """Dice Loss for segmentation tasks."""
     def __init__(self, smooth=1e-6):
         super(DiceLoss, self).__init__()
-        self.smooth = smooth  # Small value to avoid division by zero
+        self.smooth = smooth
 
     def forward(self, preds, targets):
-        """Computes Dice Loss.
-        Args:
-            preds: Predicted segmentation mask (logits before sigmoid activation).
-            targets: Ground truth mask (binary).
-        Returns:
-            Dice loss value.
-        """
-        preds = torch.sigmoid(preds)  # Apply sigmoid to get probabilities
-        intersection = (preds * targets).sum(dim=(2, 3))  # Compute intersection
-        union = preds.sum(dim=(2, 3)) + targets.sum(dim=(2, 3))  # Compute union
-        dice_coeff = (2. * intersection + self.smooth) / (union + self.smooth)  # Dice Score
-        dice_loss = 1 - dice_coeff.mean()  # Convert to loss
+        preds = torch.sigmoid(preds)
+        intersection = (preds * targets).sum(dim=(2, 3))
+        union = preds.sum(dim=(2, 3)) + targets.sum(dim=(2, 3))
+        dice_coeff = (2. * intersection + self.smooth) / (union + self.smooth)
+        dice_loss = 1 - dice_coeff.mean()
         return dice_loss
 
 
 class CharbonnierLoss(nn.Module):
-    """Charbonnier Loss (L1 variant)"""
     def __init__(self, eps=1e-6):
         super(CharbonnierLoss, self).__init__()
         self.eps = eps
 
     def forward(self, prediction, target):
         return torch.mean(torch.sqrt((prediction - target) ** 2 + self.eps ** 2))
-
-class Upsample(nn.Sequential):
-    """Upsample module."""
-    def __init__(self, scale, num_feat):
-        m = []
-        if (scale & (scale - 1)) == 0:  # scale = 2^n
-            for _ in range(int(math.log(scale, 2))):
-                m.append(nn.Conv2d(num_feat, 4 * num_feat, 3, 1, 1))
-                m.append(nn.PixelShuffle(2))
-        elif scale == 3:
-            m.append(nn.Conv2d(num_feat, 9 * num_feat, 3, 1, 1))
-            m.append(nn.PixelShuffle(3))
-        else:
-            raise ValueError(f'scale {scale} is not supported. Supported scales: 2^n and 3.')
-        super(Upsample, self).__init__(*m)
