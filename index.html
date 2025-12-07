@@ -51,91 +51,278 @@
                     <p>Accurate thyroid nodule segmentation in ultrasound images is essential for effective diagnosis and treatment planning. While multitask learning has shown promise in improving segmentation performance, several challenges remain unresolved: (a) scarcity of labeled data, (b) lack of integration of domain-specific prior knowledge, and (c) limited robustness in real-world clinical scenarios. To address these issues, we propose SSMT-Net, a Semi-Supervised Multitask Transformer-based Network that leverages unlabeled data for an initial unsupervised pre-training phase. In the subsequent supervised phase, our model jointly optimizes thyroid nodule segmentation, thyroid gland segmentation, and nodule size estimation, effectively integrating both local and global contextual cues. This multitask formulation enables the model to generalize better and remain robust across variable clinical conditions. Evaluated on two public datasets, TN3K and DDTI, SSMT-Net sets a new benchmark in thyroid nodule segmentation, achieving up to 3.38% and 1.23% absolute improvements in IoU and DSC, respectively, compared to existing state-of-the-art methods. </p>
                 </section>
 
+                <!-- 1. INTRODUCTION -->
                 <section class="content-section" id="introduction">
                     <h2>1. Introduction</h2>
-                    <p>Dataset biases present a significant challenge in the development of trustworthy machine learning models in healthcare applications. These biases can manifest as spurious correlations – misleading patterns between attributes of the data – which cause the model to learn incorrect associations that do not reflect true clinical relationships. For instance, algorithms trained on chest X-ray learned to classify pneumothorax based on the presence of a chest drain, which is inserted after pneumothorax diagnosis to treat it, and thus does not reflect the true pathological disease markers.</p>
-                    <p>Causal-based approaches aim to answer causal queries and consequently overcome challenges with spurious correlations by explicitly enforcing attribute relationships within a causal framework. These methods incorporate causal principles by embedding Structural Causal Models (SCMs) into the generation process and adhering to Pearl's Causal Hierarchy Theorem (CHT) to generate results. However, many SCM-based methods still require external classifiers to function effectively. Moreover, despite their theoretical rigor, the assumptions these methods require for theoretical validity often become unrealistic in real-world applications.</p>
-                    <p>Foundation models, trained on vast and diverse datasets, have demonstrated remarkable generative capabilities in both computer vision and medical imaging. Two significant breakthroughs are particularly relevant: (i) enhanced image generation capabilities that enables the generation of unprecedented high-resolution images, and (ii) precise targeted editing of specific image attributes.</p>
-                    <p>In this work, we explore the strengths and limitations of fine-tuned VLMs in generating high-resolution, realistic medical images while analyzing their dependence on, and ability to reveal, underlying dataset properties.</p>
+                    <p>
+                        Medical imaging is central to modern clinical workflows, providing non-invasive insight into anatomy and disease. 
+                        In thyroid ultrasound, accurate segmentation of nodules is critical for diagnosis and treatment planning, helping to
+                        reduce inter-observer variability and support consistent decision-making.
+                    </p>
+                    <p>
+                        However, automated segmentation of thyroid nodules is challenging. Ultrasound images often exhibit ambiguous 
+                        nodule boundaries, heterogeneous textures, acoustic shadows, and large variations in nodule size and shape. 
+                        These factors make it difficult for standard convolutional neural networks (CNNs) to robustly delineate nodules,
+                        especially when long-range context is needed to disambiguate local appearance.
+                    </p>
+                    <p>
+                        Existing methods mostly rely on single-task learning and focus only on nodule masks. They typically ignore 
+                        complementary information such as thyroid gland structure or quantitative nodule size, and they often depend
+                        on fully supervised training, which is problematic given the scarcity of annotated thyroid ultrasound datasets.
+                    </p>
+                    <p>
+                        Multitask learning offers a compelling alternative by jointly optimizing related tasks and encouraging shared
+                        representations. Building on this idea, <strong>SSMT-Net</strong> (Semi-Supervised Multitask Transformer-Based Network)
+                        combines three key ideas:
+                    </p>
+                    <ul>
+                        <li>Leverage unlabeled scans via unsupervised reconstruction pre-training.</li>
+                        <li>Jointly learn nodule segmentation, gland segmentation, and nodule size estimation in a single network.</li>
+                        <li>Use a hybrid CNN–Transformer encoder with a dual-decoder design for rich local and global context modeling.</li>
+                    </ul>
+                    <p>
+                        Evaluated on the TN3K and DDTI datasets, SSMT-Net achieves substantial gains over prior work in terms of IoU 
+                        and DSC, while demonstrating strong robustness and transferability under limited labels.
+                    </p>
 
                     <div class="figure">
-                        <img src="assets/Samples.jpg" alt="Comparison of counterfactual generation">
-                        <div class="figure-caption">Comparison of counterfactual generation in the SOTA structural causal model (SCM) and a foundation vision-language model. </div>
+                        <img src="assets/fig1_challenging_cases.png" alt="Challenging thyroid ultrasound examples">
+                        <div class="figure-caption">
+                            Example thyroid ultrasound cases with heterogeneous texture, irregular shapes, and poorly defined boundaries.
+                            The lower row shows manual annotations for each case.
+                        </div>
                     </div>
                 </section>
 
-                <section class="content-section" id="methodology">
-                    <h2>2. Methodology</h2>
-                    
-                    <h3>2.1 Background</h3>
-                    <p>Structural Causal Models & Counterfactual Generation: Our work investigates how fine-tuned vision-language foundation models can generate high-resolution, faithful counterfactual images. We discuss counterfactual generation using Structural Causal Models (SCMs) to provide context. These SCMs enable counterfactual reasoning for answering questions such as: What would image X look like if attribute Ai = a had instead been Ai = a′?</p>
-                    <p>Stable Diffusion, our chosen generative model for counterfactual generation, is comprised of four components: (i) an Image encoder that transforms input images into low-dimensional latent representations; (ii) a CLIP text encoder that provides text conditioning to guide generation; (iii) a U-net denoiser that forms the core of the reverse diffusion process; and (iv) an Image decoder that converts denoised latents back to the original image space.</p>
-                    
-                    <h3>2.2 Training & Inference using Stable Diffusion</h3>
-                    <p>Unlike SCM-based approaches that explicitly enforce causal relationships through predefined graphs, our method operates without imposing assumptions about attribute dependencies. We leverage language-guidance as our conditioning mechanism by converting attribute labels into textual descriptions.</p>
-                    <p>During inference, generating counterfactual medical images with the fine-tuned model is easily accomplished through a slight modification of the text prompt in a zero-shot manner. In line with interventions in Structural Causal Models (SCMs), counterfactual image generation only requires specifying the attributes we explicitly wish to change.</p>
-                    
-                    <h3>2.3 Evaluation of Synthesized Counterfactuals</h3>
-                    <p>We aim to validate the effectiveness of our method based on several key criteria: (i) Precision in High-Fidelity Counterfactual Image Editing; (ii) Comparison with SOTA SCM methods; and (iii) Unveiling Hidden Data Patterns.</p>
-                    <p>For quantitative evaluation, we use metrics such as Perceptual Similarity, Identity Preservation, and Effectiveness to ensure that CF images meet key criteria.</p>
+                <!-- 2. RELATED WORK -->
+                <section class="content-section" id="related-work">
+                    <h2>2. Related Work</h2>
+
+                    <h3>2.1 Conventional Thyroid Nodule Segmentation</h3>
+                    <p>
+                        Classical ultrasound segmentation methods are built on hand-crafted features and conventional image processing:
+                        contour- and shape-based models, region-growing and clustering techniques, and machine-learning classifiers
+                        such as SVMs and LDA. These approaches can work reasonably well in controlled settings, but they rely heavily
+                        on feature engineering and tend to generalize poorly across scanners, acquisition protocols, and patient
+                        populations.
+                    </p>
+
+                    <h3>2.2 Deep Learning–Based Segmentation</h3>
+                    <p>
+                        CNN-based segmentation networks have become the de facto standard for medical image segmentation, including
+                        thyroid ultrasound. They tackle challenges such as speckle noise and low contrast through architectural
+                        innovations (attention, multi-scale features, shape priors, and adversarial training) and often follow
+                        U-Net-like encoder–decoder designs.
+                    </p>
+                    <p>
+                        Several works introduce region and shape branches, curvature-aware edge modules, or domain-invariant shape
+                        priors to improve boundary quality and robustness. More recent methods integrate vision Transformers
+                        or foundation models to better capture global context. Nonetheless, most approaches still operate in a 
+                        single-task setting and struggle with extreme anatomical variability or limited labeled data.
+                    </p>
+
+                    <h3>2.3 Multitask Learning</h3>
+                    <p>
+                        Multitask learning has shown strong potential in medical image analysis, where related tasks such as
+                        classification, segmentation, reconstruction, or attribute estimation can share informative features.
+                        Prior work in thyroid imaging has explored joint segmentation and classification, as well as region-prior–
+                        guided attention, but typically using CNN-only backbones and fully supervised training.
+                    </p>
+                    <p>
+                        Recent multitask frameworks in other domains also combine reconstruction with downstream tasks to improve
+                        representation quality and label efficiency. Inspired by this, SSMT-Net jointly optimizes nodule and gland
+                        segmentation, explicit nodule size estimation, and image reconstruction within a hybrid CNN–Transformer
+                        architecture, yielding a more comprehensive and robust modeling of thyroid ultrasound data.
+                    </p>
+
+                    <div class="figure">
+                        <img src="assets/fig_related_table.png" alt="Comparison of related methods">
+                        <div class="figure-caption">
+                            High-level comparison of representative thyroid nodule segmentation methods in terms of backbone
+                            (CNN vs. Transformer) and multitask learning support. SSMT-Net combines CNN and Transformer components
+                            with a full multitask design.
+                        </div>
+                    </div>
                 </section>
 
+                <!-- 3. PROPOSED METHOD -->
+                <section class="content-section" id="method">
+                    <h2>3. Proposed Method</h2>
+
+                    <h3>3.1 Overall Architecture</h3>
+                    <p>
+                        SSMT-Net consists of four main components: a hybrid encoder, a dual segmentation decoder, a reconstruction
+                        module, and a nodule size estimator. The encoder extracts multi-scale features from the input ultrasound image.
+                        The dual-decoder module predicts high-resolution masks for both the thyroid gland and the nodule, while the
+                        reconstruction path enforces feature consistency by reconstructing the original image. A dedicated regression
+                        head predicts nodule size, injecting clinically meaningful scale priors into the learning process.
+                    </p>
+
+                    <div class="figure">
+                        <img src="assets/fig2_overview.png" alt="Overview of SSMT-Net">
+                        <div class="figure-caption">
+                            Overview of SSMT-Net. A CNN–Transformer encoder feeds three heads: dual segmentation decoders for gland
+                            and nodule, a reconstruction decoder, and a nodule-size regression head, enabling semi-supervised
+                            multitask learning.
+                        </div>
+                    </div>
+
+                    <h3>3.2 Image Encoding with Transformer-Enhanced Features</h3>
+                    <p>
+                        The encoder combines convolutional layers with Transformer blocks. The input image is split into patches that
+                        are linearly projected into a latent embedding space and augmented with learnable positional encodings.
+                        Stacked multi-head self-attention and MLP layers then model long-range dependencies between patches. These
+                        Transformer features are fused with CNN feature maps to preserve both local texture and global context.
+                    </p>
+
+                    <h3>3.3 Dual-Decoder Module for Segmentation</h3>
+                    <p>
+                        The dual-decoder module follows a U-Net style layout with skip connections from the encoder. One decoder
+                        focuses on thyroid gland segmentation (auxiliary task), while the other targets nodule segmentation (primary
+                        task). Each decoder integrates CNN upsampling blocks and Transformer-based mask prediction, where learnable
+                        query vectors are iteratively refined through self- and cross-attention with encoder features.
+                    </p>
+                    <p>
+                        A coarse-to-fine attention refinement mechanism restricts attention progressively to predicted foreground
+                        regions. By masking out background tokens during subsequent attention steps, the model sharpens nodule
+                        boundaries and reduces false positives, particularly for small or low-contrast nodules.
+                    </p>
+
+                    <h3>3.4 Nodule Size Prediction</h3>
+                    <p>
+                        Nodule size is a clinically important biomarker, with treatment guidelines often using size thresholds to
+                        decide biopsy or follow-up. SSMT-Net includes a regression head that takes encoder features and predicts a
+                        normalized nodule size. This auxiliary task regularizes the feature space to be scale-aware and encourages
+                        the segmentation branch to produce morphologically consistent boundaries.
+                    </p>
+
+                    <h3>3.5 Reconstruction Module</h3>
+                    <p>
+                        To exploit unlabeled ultrasound scans, SSMT-Net incorporates an image reconstruction branch. Aggregated
+                        CNN and Transformer features are passed through a decoder that reconstructs the input image. Training this
+                        branch with a robust Charbonnier loss encourages the encoder to learn noise-tolerant, structure-aware
+                        representations well aligned with ultrasound characteristics.
+                    </p>
+
+                    <h3>3.6 Semi-Supervised Multitask Training</h3>
+                    <p>
+                        Training proceeds in two phases. In the <em>unsupervised phase</em>, only the reconstruction path is optimized
+                        using both labeled and unlabeled scans, allowing the encoder to learn generic ultrasound features. In the
+                        subsequent <em>supervised phase</em>, all branches are trained jointly: nodule segmentation, gland segmentation,
+                        nodule size prediction, and reconstruction.
+                    </p>
+                    <p>
+                        The total loss is a weighted combination of Dice losses for nodule and gland masks, a regression loss for size,
+                        and reconstruction loss. Nodule segmentation receives the highest weight to keep it as the primary objective,
+                        while auxiliary tasks provide complementary supervision that improves robustness and generalization.
+                    </p>
+                </section>
+
+                <!-- 4. EXPERIMENTS -->
                 <section class="content-section" id="experiments">
-                    <h2>3. Results</h2>
-                    
-                    
-                    <p>Our high-resolution results not only align with the baseline method to what interventions in the image should be made, but also maintain high fidelity to the original image. The baseline method's pre-defined SCM includes an edge between age and pleural effusion, suggesting a potential causal relationship. Interestingly, without the need for an explicit SCM, the fine-tuned VLM also demonstrates an effect on pleural effusion when age is modified.</p>
-                    
+                    <h2>4. Experiments</h2>
+
+                    <h3>4.1 Experimental Settings</h3>
+                    <p>
+                        SSMT-Net is evaluated on two public thyroid ultrasound datasets: TN3K and DDTI, with TG3K used as an
+                        additional source of gland images for auxiliary tasks. Images are preprocessed by normalization and resizing
+                        to a fixed resolution, followed by standard augmentations such as flipping, rotation, zoom-out, and stitching.
+                    </p>
+                    <p>
+                        The network employs a ResNet-50 backbone coupled with a Vision Transformer (Base, 16×16 patches) as the
+                        encoder. Training uses the Adam optimizer with cosine learning-rate scheduling over 300 epochs, evaluated via
+                        Intersection-over-Union (IoU) and Dice Similarity Coefficient (DSC).
+                    </p>
+
+                    <h3>4.2 Comparison with State-of-the-Art Methods</h3>
+                    <p>
+                        On TN3K, SSMT-Net achieves state-of-the-art performance, outperforming prior CNN-based and hybrid methods
+                        such as TRFE+, SHAN, Deblurring-MIM, TnSeg, US-Net, CIL-Net, and others. The model improves IoU and DSC
+                        by several absolute percentage points compared to the best competing method, demonstrating the benefit of
+                        combining semi-supervision, multitask learning, and hybrid CNN–Transformer encoders.
+                    </p>
+
+                    <h3>4.3 Ablation Study</h3>
+                    <p>
+                        Ablation experiments progressively enable reconstruction, gland segmentation, and size prediction. Starting
+                        from a TransUNet-like baseline, adding reconstruction alone already yields performance gains by improving
+                        representation quality. Introducing gland segmentation further refines localization through anatomical
+                        context, while size prediction injects structural priors that sharpen small nodules.
+                    </p>
+                    <p>
+                        The full SSMT-Net configuration, with all auxiliary tasks active, achieves the highest IoU and DSC. Auxiliary
+                        metrics, such as gland segmentation accuracy and nodule size mean absolute error, confirm that these tasks
+                        are learned effectively and contribute to the final segmentation performance.
+                    </p>
+
                     <div class="figure">
-                        <img src="images/qual_results.jpg" alt="Counterfactual image generation results">
-                        <div class="figure-caption">Comparison of counterfactual image generation results using our proposed method vs. baseline, a SOTA method that employs an explicit SCM for generation.</div>
+                        <img src="assets/fig3_ablation_visual.png" alt="Visual ablation results">
+                        <div class="figure-caption">
+                            Qualitative comparison of different SSMT-Net variants. The full model produces cleaner and more accurate
+                            contours, particularly for small or ambiguous nodules.
+                        </div>
                     </div>
-                    
-                    <p>Notably, the fine-tuned vision-language model associates cardiomegaly specifically with pacemakers when applying prompt-based modifications. This is evident when prompting the model to remove cardiomegaly, as it also removes the pacemaker. This relationship is supported by the literature, which indicates a bidirectional relationship between cardiomegaly and pacemaker implantation.</p>
-                    
-                    <div class="figure">
-                        <img src="images/multiple_interv.jpg" alt="Revealing hidden image-attribute relationships">
-                        <div class="figure-caption">Revealing hidden image-attribute relationships from prompt modifications. Notably, removing cardiomegaly also results in the specific removal of the pacemaker, but not other support devices, suggesting a hidden correlation in the training data.</div>
-                    </div>
-                    
-                    
+
+                    <h3>4.4 Robustness and Transferability</h3>
+                    <p>
+                        Robustness is further validated on DDTI under different training regimes. When evaluated zero-shot using a
+                        model trained on TN3K, SSMT-Net already matches or exceeds several existing methods. Fine-tuning the decoder
+                        on only a small fraction of DDTI greatly improves performance, indicating that the encoder learns transferable,
+                        domain-robust representations that adapt well to new datasets with limited annotations.
+                    </p>
                 </section>
 
+                <!-- 5. CONCLUSION -->
                 <section class="content-section conclusion" id="conclusion">
-                    <h2>4. Conclusion</h2>
-                    <p>Our work highlights the potential of fine-tuned vision-language foundation models in identifying critical data biases and spurious correlations. By leveraging their ability to generate high-resolution, precisely edited images through language prompts, these models reveal hidden data patterns that were previously undetectable. This has significant implications for the development of VLM-based methods in healthcare, where understanding dataset biases is crucial for building robust, trustworthy, and clinically deployable models. Our findings also underscore the limitations of fine-tuned VLMs, including their susceptibility to spurious correlations. Future work will focus on integrating causal reasoning to mitigate the reliance on biases and enhance the reliability of these models in clinical applications.</p>
+                    <h2>5. Conclusion</h2>
+                    <p>
+                        SSMT-Net introduces a semi-supervised multitask framework for thyroid nodule segmentation in ultrasound images.
+                        By combining a CNN–Transformer encoder with dual segmentation decoders, an image reconstruction module, and a
+                        nodule size estimator, the network leverages both labeled and unlabeled data while integrating complementary
+                        anatomical and morphological cues.
+                    </p>
+                    <p>
+                        Experiments on TN3K and DDTI show that SSMT-Net achieves state-of-the-art performance and robust
+                        generalization under scarce labels. The auxiliary tasks not only improve segmentation quality but also provide
+                        clinically meaningful outputs such as gland masks and size estimates. Future work may explore additional
+                        self-supervised objectives, such as masked modeling or contrastive learning, within the same two-phase
+                        training schedule to further enhance label efficiency in ultrasound imaging.
+                    </p>
+                </section>
+
+                <section class="content-section" id="acknowledgements">
+                    <h2>Acknowledgements</h2>
+                    <p>
+                        This work is partially supported by the National Research Foundation of Korea (NRF) grant funded by the Korea
+                        government (MSIT) and by the Institute of Information & Communications Technology Planning & Evaluation (IITP)
+                        grant under the Artificial Intelligence Graduate School Program at Hanyang University.
+                    </p>
                 </section>
             </main>
-            
+
+            <!-- SIDE NAVIGATION -->
             <aside>
                 <div class="navigation">
                     <h3>Contents</h3>
                     <ul>
                         <li><a href="#introduction">1. Introduction</a></li>
-                        <li><a href="#methodology">2. Methodology</a></li>
-                        <li><a href="#experiments">3. Results</a></li>
-                        <li><a href="#conclusion">4. Conclusion</a></li>
+                        <li><a href="#related-work">2. Related Work</a></li>
+                        <li><a href="#method">3. Proposed Method</a></li>
+                        <li><a href="#experiments">4. Experiments</a></li>
+                        <li><a href="#conclusion">5. Conclusion</a></li>
+                        <li><a href="#acknowledgements">Acknowledgements</a></li>
                     </ul>
                 </div>
-                
-                
-                
-                <a href="#" class="btn">Access Paper</a>
+
+                <!-- Update this href to your actual paper URL (e.g., arXiv or a PDF in the repo) -->
+                <a href="SSMT-Net-paper.pdf" class="btn" target="_blank">Access Paper</a>
             </aside>
         </div>
     </div>
-    
+
     <footer>
         <div class="container">
-            
-            <div class="acknowledgements">
-                <h3>Acknowledgments and Funding</h3>
-                <p>The authors are grateful for funding provided by the Natural Sciences and Engineering Research Council of Canada, the Canadian Institute for Advanced Research (CIFAR) Artificial Intelligence Chairs program, Mila - Quebec AI Institute, Google Research, Calcul Québec, Fonds de recherche du Québec (FRQNT), and the Digital Research Alliance of Canada.</p>
-            </div>
-        </div>
-        <p></p>
-        <p>© Amar Kumar, Anita Kriz | 2025 MIV-CVPR Workshop Proceedings</p>
-        <div class="container">
+            <p>© SSMT-Net Project</p>
             <div class="footer-content">
                 <div class="visitor-counter">
                     <span id="visitor-count">Loading...</span> visitors to this page
@@ -146,48 +333,47 @@
 
     <script src="script.js"></script>
 
-    <!-- Visitor Counter Script -->
+    <!-- Visitor Counter Script (replace workerBaseUrl with your own worker if you use one) -->
     <script>
-    // Wait for the DOM to be fully loaded
     document.addEventListener('DOMContentLoaded', function() {
-    // Get the counter element
-    const counterElement = document.getElementById('visitor-count');
-    
-    // Cloudflare Worker URL - our deployed worker
-    const workerBaseUrl = 'https://vlm4hiar.amar-kumar.workers.dev';
-    
-    // Function to update the display with count
-    function updateCounterDisplay(count) {
-        if (counterElement) {
-            counterElement.textContent = count.toLocaleString();
+        const counterElement = document.getElementById('visitor-count');
+
+        // TODO: replace with your own Cloudflare Worker URL if desired
+        const workerBaseUrl = 'https://your-worker-url.example.com';
+
+        function updateCounterDisplay(count) {
+            if (counterElement) {
+                counterElement.textContent = count.toLocaleString();
+            }
         }
-    }
-    
-    // Function to handle errors
-    function handleError(error) {
-        console.error('Error with visitor counter:', error);
-        // If error occurs, show a default value
-        if (counterElement) {
-            counterElement.textContent = '1+';
+
+        function handleError(error) {
+            console.error('Error with visitor counter:', error);
+            if (counterElement) {
+                counterElement.textContent = '1+';
+            }
         }
-    }
-    
-    try {
-        // Always call the increment endpoint - the worker will handle uniqueness by IP
-        fetch(`${workerBaseUrl}/increment`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                updateCounterDisplay(data.count);
-            })
-            .catch(handleError);
-    } catch (error) {
-        handleError(error);
-    }
+
+        if (workerBaseUrl !== 'https://your-worker-url.example.com') {
+            try {
+                fetch(`${workerBaseUrl}/increment`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        updateCounterDisplay(data.count);
+                    })
+                    .catch(handleError);
+            } catch (error) {
+                handleError(error);
+            }
+        } else {
+            // Fallback if no worker is configured
+            updateCounterDisplay(1);
+        }
     });
     </script>
 </body>
