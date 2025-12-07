@@ -1,6 +1,0 @@
-name = "vlm4hiar"
-main = "src/index.js"
-compatibility_date = "2025-04-29"
-kv_namespaces = [
-  { binding = "VISITOR_COUNTER_VLM4HIAR", id = "d1e6d5a404754d17b5ed255d30f72fc2" }
-]
