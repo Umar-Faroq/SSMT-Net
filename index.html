@@ -78,7 +78,7 @@
                     <ul>
                         <li>Leverage unlabeled scans via unsupervised reconstruction pre-training.</li>
                         <li>Jointly learn nodule segmentation, gland segmentation, and nodule size estimation in a single network.</li>
-                        <li>Use a hybrid CNN–Transformer encoder with a dual-decoder design for rich local and global context modeling.</li>
+                        <li>Use a hybrid CNN–CNN-Transformer encoder with a dual-decoder design for rich local and global context modeling.</li>
                     </ul>
                     <p>
                         Evaluated on the TN3K and DDTI datasets, SSMT-Net achieves substantial gains over prior work in terms of IoU 
@@ -86,7 +86,7 @@
                     </p>
 
                     <div class="figure">
-                        <img src="assets/fig1_challenging_cases.png" alt="Challenging thyroid ultrasound examples">
+                        <img src="assets/Samples.jpg" alt="Challenging thyroid ultrasound examples">
                         <div class="figure-caption">
                             Example thyroid ultrasound cases with heterogeneous texture, irregular shapes, and poorly defined boundaries.
                             The lower row shows manual annotations for each case.
@@ -136,7 +136,7 @@
                     </p>
 
                     <div class="figure">
-                        <img src="assets/fig_related_table.png" alt="Comparison of related methods">
+                        <img src="assets/T1.JPG" alt="Comparison of related methods">
                         <div class="figure-caption">
                             High-level comparison of representative thyroid nodule segmentation methods in terms of backbone
                             (CNN vs. Transformer) and multitask learning support. SSMT-Net combines CNN and Transformer components
@@ -159,7 +159,7 @@
                     </p>
 
                     <div class="figure">
-                        <img src="assets/fig2_overview.png" alt="Overview of SSMT-Net">
+                        <img src="assets/network.jpg" alt="Overview of SSMT-Net">
                         <div class="figure-caption">
                             Overview of SSMT-Net. A CNN–Transformer encoder feeds three heads: dual segmentation decoders for gland
                             and nodule, a reconstruction decoder, and a nodule-size regression head, enabling semi-supervised
@@ -256,7 +256,7 @@
                     </p>
 
                     <div class="figure">
-                        <img src="assets/fig3_ablation_visual.png" alt="Visual ablation results">
+                        <img src="assets/Ablation_tn3k.jpg" alt="Visual ablation results">
                         <div class="figure-caption">
                             Qualitative comparison of different SSMT-Net variants. The full model produces cleaner and more accurate
                             contours, particularly for small or ambiguous nodules.
