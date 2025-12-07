@@ -19,49 +19,43 @@ def parse_args():
         "--data_root_tn3k",
         type=str,
         default="data/TN3K",
-        help="Root folder for TN3K dataset (containing test-image, test-mask)",
+        help="Root folder for TN3K dataset",
     )
     parser.add_argument(
         "--data_root_tg3k",
         type=str,
         default="data/tg3k",
-        help="Root folder for TG3K dataset (containing thyroid-image, thyroid-mask). "
-             "Used because the dataset class expects both nodule and gland data.",
+        help="Root folder for TG3K dataset",
     )
     parser.add_argument(
         "--img_size",
         type=int,
         default=224,
-        help="Input image size (square, must match training).",
+        help="Input image size",
     )
     parser.add_argument(
         "--batch_size",
         type=int,
         default=4,
-        help="Batch size for testing.",
+        help="Batch size for testing",
     )
     parser.add_argument(
         "--checkpoint",
         type=str,
         default="checkpoints/best_model_recon_dualenc.pth",
-        help="Path to the trained model checkpoint.",
+        help="Path to the trained model checkpoint",
     )
     parser.add_argument(
         "--results_path",
         type=str,
         default="test_results.json",
-        help="Path to save test metrics JSON.",
+        help="Path to save test metrics",
     )
 
     return parser.parse_args()
 
 
 def compute_dice_iou(preds_binary, masks):
-    """
-    preds_binary, masks: tensors of shape [B, 1, H, W] with {0,1} values
-    returns: dice (B,), iou (B,) as numpy arrays
-    """
-    # Flatten spatial dims
     intersection = (preds_binary * masks).sum(dim=(2, 3))
     union = preds_binary.sum(dim=(2, 3)) + masks.sum(dim=(2, 3))
 
@@ -78,10 +72,6 @@ def test_model(
     checkpoint_path="checkpoints/best_model_recon_dualenc.pth",
     results_path="test_results.json",
 ):
-    """
-    Load a trained model from checkpoint and evaluate Dice & IoU on the test set.
-    """
-    # Load checkpoint
     print(f"Loading checkpoint from: {checkpoint_path}")
     state_dict = torch.load(checkpoint_path, map_location=device)
     net.load_state_dict(state_dict)
@@ -93,27 +83,19 @@ def test_model(
 
     with torch.no_grad():
         for batch_idx, batch in enumerate(test_loader):
-            # NoduleGlandDataset typically returns:
-            # (images, nodule_mask, gland_mask, area_nodule, area_gland, something_else)
-            # We only need images + nodule masks for metrics
             images, masks, *_ = batch
             images = images.to(device)
             masks = masks.to(device)
 
-            # Forward pass
-            # Assuming the network returns: seg1, seg2, recon, area
             outputs = net(images)
             if isinstance(outputs, (list, tuple)) and len(outputs) >= 2:
-                seg_outputs = outputs[1]  # use second segmentation head as final output
+                seg_outputs = outputs[1]
             else:
-                # If your get_network returns a single segmentation output
                 seg_outputs = outputs
 
-            # Convert logits -> probabilities -> binary
             probs = torch.sigmoid(seg_outputs)
             preds_binary = (probs > 0.5).float()
 
-            # Compute per-sample Dice & IoU
             dice_batch, iou_batch = compute_dice_iou(preds_binary, masks)
             all_dice.extend(dice_batch)
             all_iou.extend(iou_batch)
@@ -126,12 +108,10 @@ def test_model(
     iou_mean = float(all_iou.mean())
     iou_std = float(all_iou.std())
 
-    print("\n===== Test Metrics (Mean ± Std) =====")
+    print(f"\nTest Metrics (Mean ± Std)")
     print(f"Dice: {dice_mean:.6f} ± {dice_std:.6f}")
-    print(f"IoU : {iou_mean:.6f} ± {iou_std:.6f}")
-    print("=====================================\n")
+    print(f"IoU : {iou_mean:.6f} ± {iou_std:.6f}\n")
 
-    # Save metrics to JSON
     results = {
         "Dice_mean": dice_mean,
         "Dice_std": dice_std,
@@ -154,9 +134,6 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    # ------------------------------------------------------------
-    # 1. Build test dataset & dataloader (TN3K test + TG3K gland)
-    # ------------------------------------------------------------
     test_image_folder = os.path.join(args.data_root_tn3k, "test-image")
     test_mask_folder = os.path.join(args.data_root_tn3k, "test-mask")
 
@@ -183,20 +160,14 @@ def main():
         num_workers=2,
     )
 
-    # ------------------------------------------------------------
-    # 2. Build model (must match training config)
-    # ------------------------------------------------------------
     net = get_network(
         vit_name="R50-ViT-B_16",
         img_size=args.img_size,
-        num_classes=2,  # or 1 depending on training; must match checkpoint
+        num_classes=2,
         n_skip=3,
         vit_patches_size=16,
     )
 
-    # ------------------------------------------------------------
-    # 3. Run test
-    # ------------------------------------------------------------
     os.makedirs(os.path.dirname(args.results_path) or ".", exist_ok=True)
     test_model(
         net,
