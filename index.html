@@ -50,275 +50,264 @@
                     <h2>Abstract</h2>
                     <p>Accurate thyroid nodule segmentation in ultrasound images is essential for effective diagnosis and treatment planning. While multitask learning has shown promise in improving segmentation performance, several challenges remain unresolved: (a) scarcity of labeled data, (b) lack of integration of domain-specific prior knowledge, and (c) limited robustness in real-world clinical scenarios. To address these issues, we propose SSMT-Net, a Semi-Supervised Multitask Transformer-based Network that leverages unlabeled data for an initial unsupervised pre-training phase. In the subsequent supervised phase, our model jointly optimizes thyroid nodule segmentation, thyroid gland segmentation, and nodule size estimation, effectively integrating both local and global contextual cues. This multitask formulation enables the model to generalize better and remain robust across variable clinical conditions. Evaluated on two public datasets, TN3K and DDTI, SSMT-Net sets a new benchmark in thyroid nodule segmentation, achieving up to 3.38% and 1.23% absolute improvements in IoU and DSC, respectively, compared to existing state-of-the-art methods. </p>
                 </section>
+<section class="content-section" id="introduction">
+    <h2>1. Introduction</h2>
+    <p>
+        Medical imaging is central to modern clinical workflows, providing non-invasive insight into anatomy and disease. 
+        In thyroid ultrasound, accurate segmentation of nodules is critical for diagnosis and treatment planning, helping to
+        reduce inter-observer variability and support consistent decision-making.
+    </p>
+    <p>
+        However, automated segmentation of thyroid nodules is challenging. Ultrasound images often exhibit ambiguous 
+        nodule boundaries, heterogeneous textures, acoustic shadows, and large variations in nodule size and shape. 
+        These factors make it difficult for standard convolutional neural networks (CNNs) to robustly delineate nodules,
+        especially when long-range context is needed to disambiguate local appearance.
+    </p>
+    <p>
+        Existing methods mostly rely on single-task learning and focus only on nodule masks. They typically ignore 
+        complementary information such as thyroid gland structure or quantitative nodule size, and they often depend
+        on fully supervised training, which is problematic given the scarcity of annotated thyroid ultrasound datasets.
+    </p>
+    <p>
+        Multitask learning offers a compelling alternative by jointly optimizing related tasks and encouraging shared
+        representations. Building on this idea, <strong>SSMT-Net</strong> (Semi-Supervised Multitask Transformer-Based Network)
+        combines three key ideas:
+    </p>
+    <ul>
+        <li>Leverage unlabeled scans via unsupervised reconstruction pre-training.</li>
+        <li>Jointly learn nodule segmentation, gland segmentation, and nodule size estimation in a single network.</li>
+        <li>Use a hybrid CNN–CNN-Transformer encoder with a dual-decoder design for rich local and global context modeling.</li>
+    </ul>
+    <p>
+        Evaluated on the TN3K and DDTI datasets, SSMT-Net achieves substantial gains over prior work in terms of IoU 
+        and DSC, while demonstrating strong robustness and transferability under limited labels.
+    </p>
 
-                <!-- 1. INTRODUCTION -->
-                <!-- <section class="content-section" id="introduction">
-                    <h2>1. Introduction</h2>
-                    <p>
-                        Medical imaging is central to modern clinical workflows, providing non-invasive insight into anatomy and disease. 
-                        In thyroid ultrasound, accurate segmentation of nodules is critical for diagnosis and treatment planning, helping to
-                        reduce inter-observer variability and support consistent decision-making.
-                    </p>
-                    <p>
-                        However, automated segmentation of thyroid nodules is challenging. Ultrasound images often exhibit ambiguous 
-                        nodule boundaries, heterogeneous textures, acoustic shadows, and large variations in nodule size and shape. 
-                        These factors make it difficult for standard convolutional neural networks (CNNs) to robustly delineate nodules,
-                        especially when long-range context is needed to disambiguate local appearance.
-                    </p>
-                    <p>
-                        Existing methods mostly rely on single-task learning and focus only on nodule masks. They typically ignore 
-                        complementary information such as thyroid gland structure or quantitative nodule size, and they often depend
-                        on fully supervised training, which is problematic given the scarcity of annotated thyroid ultrasound datasets.
-                    </p>
-                    <p>
-                        Multitask learning offers a compelling alternative by jointly optimizing related tasks and encouraging shared
-                        representations. Building on this idea, <strong>SSMT-Net</strong> (Semi-Supervised Multitask Transformer-Based Network)
-                        combines three key ideas:
-                    </p>
-                    <ul>
-                        <li>Leverage unlabeled scans via unsupervised reconstruction pre-training.</li>
-                        <li>Jointly learn nodule segmentation, gland segmentation, and nodule size estimation in a single network.</li>
-                        <li>Use a hybrid CNN–CNN-Transformer encoder with a dual-decoder design for rich local and global context modeling.</li>
-                    </ul>
-                    <p>
-                        Evaluated on the TN3K and DDTI datasets, SSMT-Net achieves substantial gains over prior work in terms of IoU 
-                        and DSC, while demonstrating strong robustness and transferability under limited labels.
-                    </p>
-
-                    <div class="figure">
-                        <img src="assets/Samples.jpg" alt="Challenging thyroid ultrasound examples">
-                        <div class="figure-caption">
-                            Example thyroid ultrasound cases with heterogeneous texture, irregular shapes, and poorly defined boundaries.
-                            The lower row shows manual annotations for each case.
-                        </div>
-                    </div>
-                </section> -->
-
-                <!-- 2. RELATED WORK -->
-                <!-- <section class="content-section" id="related-work">
-                    <h2>2. Related Work</h2>
-
-                    <h3>2.1 Conventional Thyroid Nodule Segmentation</h3>
-                    <p>
-                        Classical ultrasound segmentation methods are built on hand-crafted features and conventional image processing:
-                        contour- and shape-based models, region-growing and clustering techniques, and machine-learning classifiers
-                        such as SVMs and LDA. These approaches can work reasonably well in controlled settings, but they rely heavily
-                        on feature engineering and tend to generalize poorly across scanners, acquisition protocols, and patient
-                        populations.
-                    </p>
-
-                    <h3>2.2 Deep Learning–Based Segmentation</h3>
-                    <p>
-                        CNN-based segmentation networks have become the de facto standard for medical image segmentation, including
-                        thyroid ultrasound. They tackle challenges such as speckle noise and low contrast through architectural
-                        innovations (attention, multi-scale features, shape priors, and adversarial training) and often follow
-                        U-Net-like encoder–decoder designs.
-                    </p>
-                    <p>
-                        Several works introduce region and shape branches, curvature-aware edge modules, or domain-invariant shape
-                        priors to improve boundary quality and robustness. More recent methods integrate vision Transformers
-                        or foundation models to better capture global context. Nonetheless, most approaches still operate in a 
-                        single-task setting and struggle with extreme anatomical variability or limited labeled data.
-                    </p>
-
-                    <h3>2.3 Multitask Learning</h3>
-                    <p>
-                        Multitask learning has shown strong potential in medical image analysis, where related tasks such as
-                        classification, segmentation, reconstruction, or attribute estimation can share informative features.
-                        Prior work in thyroid imaging has explored joint segmentation and classification, as well as region-prior–
-                        guided attention, but typically using CNN-only backbones and fully supervised training.
-                    </p>
-                    <p>
-                        Recent multitask frameworks in other domains also combine reconstruction with downstream tasks to improve
-                        representation quality and label efficiency. Inspired by this, SSMT-Net jointly optimizes nodule and gland
-                        segmentation, explicit nodule size estimation, and image reconstruction within a hybrid CNN–Transformer
-                        architecture, yielding a more comprehensive and robust modeling of thyroid ultrasound data.
-                    </p>
-
-                    <div class="figure">
-                        <img src="assets/T1.JPG" alt="Comparison of related methods">
-                        <div class="figure-caption">
-                            High-level comparison of representative thyroid nodule segmentation methods in terms of backbone
-                            (CNN vs. Transformer) and multitask learning support. SSMT-Net combines CNN and Transformer components
-                            with a full multitask design.
-                        </div>
-                    </div>
-                </section> -->
-
-                <!-- 3. PROPOSED METHOD -->
-                <!-- <section class="content-section" id="method">
-                    <h2>3. Proposed Method</h2>
-
-                    <h3>3.1 Overall Architecture</h3>
-                    <p>
-                        SSMT-Net consists of four main components: a hybrid encoder, a dual segmentation decoder, a reconstruction
-                        module, and a nodule size estimator. The encoder extracts multi-scale features from the input ultrasound image.
-                        The dual-decoder module predicts high-resolution masks for both the thyroid gland and the nodule, while the
-                        reconstruction path enforces feature consistency by reconstructing the original image. A dedicated regression
-                        head predicts nodule size, injecting clinically meaningful scale priors into the learning process.
-                    </p>
-
-                    <div class="figure">
-                        <img src="assets/network.jpg" alt="Overview of SSMT-Net">
-                        <div class="figure-caption">
-                            Overview of SSMT-Net. A CNN–Transformer encoder feeds three heads: dual segmentation decoders for gland
-                            and nodule, a reconstruction decoder, and a nodule-size regression head, enabling semi-supervised
-                            multitask learning.
-                        </div>
-                    </div>
-
-                    <h3>3.2 Image Encoding with Transformer-Enhanced Features</h3>
-                    <p>
-                        The encoder combines convolutional layers with Transformer blocks. The input image is split into patches that
-                        are linearly projected into a latent embedding space and augmented with learnable positional encodings.
-                        Stacked multi-head self-attention and MLP layers then model long-range dependencies between patches. These
-                        Transformer features are fused with CNN feature maps to preserve both local texture and global context.
-                    </p>
-
-                    <h3>3.3 Dual-Decoder Module for Segmentation</h3>
-                    <p>
-                        The dual-decoder module follows a U-Net style layout with skip connections from the encoder. One decoder
-                        focuses on thyroid gland segmentation (auxiliary task), while the other targets nodule segmentation (primary
-                        task). Each decoder integrates CNN upsampling blocks and Transformer-based mask prediction, where learnable
-                        query vectors are iteratively refined through self- and cross-attention with encoder features.
-                    </p>
-                    <p>
-                        A coarse-to-fine attention refinement mechanism restricts attention progressively to predicted foreground
-                        regions. By masking out background tokens during subsequent attention steps, the model sharpens nodule
-                        boundaries and reduces false positives, particularly for small or low-contrast nodules.
-                    </p>
-
-                    <h3>3.4 Nodule Size Prediction</h3>
-                    <p>
-                        Nodule size is a clinically important biomarker, with treatment guidelines often using size thresholds to
-                        decide biopsy or follow-up. SSMT-Net includes a regression head that takes encoder features and predicts a
-                        normalized nodule size. This auxiliary task regularizes the feature space to be scale-aware and encourages
-                        the segmentation branch to produce morphologically consistent boundaries.
-                    </p>
-
-                    <h3>3.5 Reconstruction Module</h3>
-                    <p>
-                        To exploit unlabeled ultrasound scans, SSMT-Net incorporates an image reconstruction branch. Aggregated
-                        CNN and Transformer features are passed through a decoder that reconstructs the input image. Training this
-                        branch with a robust Charbonnier loss encourages the encoder to learn noise-tolerant, structure-aware
-                        representations well aligned with ultrasound characteristics.
-                    </p>
-
-                    <h3>3.6 Semi-Supervised Multitask Training</h3>
-                    <p>
-                        Training proceeds in two phases. In the <em>unsupervised phase</em>, only the reconstruction path is optimized
-                        using both labeled and unlabeled scans, allowing the encoder to learn generic ultrasound features. In the
-                        subsequent <em>supervised phase</em>, all branches are trained jointly: nodule segmentation, gland segmentation,
-                        nodule size prediction, and reconstruction.
-                    </p>
-                    <p>
-                        The total loss is a weighted combination of Dice losses for nodule and gland masks, a regression loss for size,
-                        and reconstruction loss. Nodule segmentation receives the highest weight to keep it as the primary objective,
-                        while auxiliary tasks provide complementary supervision that improves robustness and generalization.
-                    </p>
-                </section> -->
-
-                <!-- 4. EXPERIMENTS -->
-                <!-- <section class="content-section" id="experiments">
-                    <h2>4. Experiments</h2>
-
-                    <h3>4.1 Experimental Settings</h3>
-                    <p>
-                        SSMT-Net is evaluated on two public thyroid ultrasound datasets: TN3K and DDTI, with TG3K used as an
-                        additional source of gland images for auxiliary tasks. Images are preprocessed by normalization and resizing
-                        to a fixed resolution, followed by standard augmentations such as flipping, rotation, zoom-out, and stitching.
-                    </p>
-                    <p>
-                        The network employs a ResNet-50 backbone coupled with a Vision Transformer (Base, 16×16 patches) as the
-                        encoder. Training uses the Adam optimizer with cosine learning-rate scheduling over 300 epochs, evaluated via
-                        Intersection-over-Union (IoU) and Dice Similarity Coefficient (DSC).
-                    </p>
-
-                    <h3>4.2 Comparison with State-of-the-Art Methods</h3>
-                    <p>
-                        On TN3K, SSMT-Net achieves state-of-the-art performance, outperforming prior CNN-based and hybrid methods
-                        such as TRFE+, SHAN, Deblurring-MIM, TnSeg, US-Net, CIL-Net, and others. The model improves IoU and DSC
-                        by several absolute percentage points compared to the best competing method, demonstrating the benefit of
-                        combining semi-supervision, multitask learning, and hybrid CNN–Transformer encoders.
-                    </p>
-
-                    <h3>4.3 Ablation Study</h3>
-                    <p>
-                        Ablation experiments progressively enable reconstruction, gland segmentation, and size prediction. Starting
-                        from a TransUNet-like baseline, adding reconstruction alone already yields performance gains by improving
-                        representation quality. Introducing gland segmentation further refines localization through anatomical
-                        context, while size prediction injects structural priors that sharpen small nodules.
-                    </p>
-                    <p>
-                        The full SSMT-Net configuration, with all auxiliary tasks active, achieves the highest IoU and DSC. Auxiliary
-                        metrics, such as gland segmentation accuracy and nodule size mean absolute error, confirm that these tasks
-                        are learned effectively and contribute to the final segmentation performance.
-                    </p>
-
-                    <div class="figure">
-                        <img src="assets/Ablation_tn3k.jpg" alt="Visual ablation results">
-                        <div class="figure-caption">
-                            Qualitative comparison of different SSMT-Net variants. The full model produces cleaner and more accurate
-                            contours, particularly for small or ambiguous nodules.
-                        </div>
-                    </div>
-
-                    <h3>4.4 Robustness and Transferability</h3>
-                    <p>
-                        Robustness is further validated on DDTI under different training regimes. When evaluated zero-shot using a
-                        model trained on TN3K, SSMT-Net already matches or exceeds several existing methods. Fine-tuning the decoder
-                        on only a small fraction of DDTI greatly improves performance, indicating that the encoder learns transferable,
-                        domain-robust representations that adapt well to new datasets with limited annotations.
-                    </p>
-                </section>
-
-                <!-- 5. CONCLUSION -->
-                <!-- <section class="content-section conclusion" id="conclusion">
-                    <h2>5. Conclusion</h2>
-                    <p>
-                        SSMT-Net introduces a semi-supervised multitask framework for thyroid nodule segmentation in ultrasound images.
-                        By combining a CNN–Transformer encoder with dual segmentation decoders, an image reconstruction module, and a
-                        nodule size estimator, the network leverages both labeled and unlabeled data while integrating complementary
-                        anatomical and morphological cues.
-                    </p>
-                    <p>
-                        Experiments on TN3K and DDTI show that SSMT-Net achieves state-of-the-art performance and robust
-                        generalization under scarce labels. The auxiliary tasks not only improve segmentation quality but also provide
-                        clinically meaningful outputs such as gland masks and size estimates. Future work may explore additional
-                        self-supervised objectives, such as masked modeling or contrastive learning, within the same two-phase
-                        training schedule to further enhance label efficiency in ultrasound imaging.
-                    </p>
-                </section> -->
-
-                <!-- <section class="content-section" id="acknowledgements">
-                    <h2>Acknowledgements</h2>
-                    <p>
-                        This work is partially supported by the National Research Foundation of Korea (NRF) grant funded by the Korea
-                        government (MSIT) and by the Institute of Information & Communications Technology Planning & Evaluation (IITP)
-                        grant under the Artificial Intelligence Graduate School Program at Hanyang University.
-                    </p>
-                </section> --> -->
-            <!-- </main> -->
-
-            <!-- SIDE NAVIGATION -->
-            <!-- <aside>
-                <div class="navigation">
-                    <h3>Contents</h3>
-                    <ul>
-                        <li><a href="#introduction">1. Introduction</a></li>
-                        <li><a href="#related-work">2. Related Work</a></li>
-                        <li><a href="#method">3. Proposed Method</a></li>
-                        <li><a href="#experiments">4. Experiments</a></li>
-                        <li><a href="#conclusion">5. Conclusion</a></li>
-                        <li><a href="#acknowledgements">Acknowledgements</a></li>
-                    </ul>
-                </div>
-
-                <!-- Update this href to your actual paper URL (e.g., arXiv or a PDF in the repo) -->
-                <!-- <a href="SSMT-Net-paper.pdf" class="btn" target="_blank">Access Paper</a>
-            </aside>
+    <div class="figure">
+        <img src="assets/Samples.jpg" alt="Challenging thyroid ultrasound examples">
+        <div class="figure-caption">
+            Example thyroid ultrasound cases with heterogeneous texture, irregular shapes, and poorly defined boundaries.
+            The lower row shows manual annotations for each case.
         </div>
-    </div> -->
+    </div>
+</section>
+
+<section class="content-section" id="related-work">
+    <h2>2. Related Work</h2>
+
+    <h3>2.1 Conventional Thyroid Nodule Segmentation</h3>
+    <p>
+        Classical ultrasound segmentation methods are built on hand-crafted features and conventional image processing:
+        contour- and shape-based models, region-growing and clustering techniques, and machine-learning classifiers
+        such as SVMs and LDA. These approaches can work reasonably well in controlled settings, but they rely heavily
+        on feature engineering and tend to generalize poorly across scanners, acquisition protocols, and patient
+        populations.
+    </p>
+
+    <h3>2.2 Deep Learning–Based Segmentation</h3>
+    <p>
+        CNN-based segmentation networks have become the de facto standard for medical image segmentation, including
+        thyroid ultrasound. They tackle challenges such as speckle noise and low contrast through architectural
+        innovations (attention, multi-scale features, shape priors, and adversarial training) and often follow
+        U-Net-like encoder–decoder designs.
+    </p>
+    <p>
+        Several works introduce region and shape branches, curvature-aware edge modules, or domain-invariant shape
+        priors to improve boundary quality and robustness. More recent methods integrate vision Transformers
+        or foundation models to better capture global context. Nonetheless, most approaches still operate in a 
+        single-task setting and struggle with extreme anatomical variability or limited labeled data.
+    </p>
+
+    <h3>2.3 Multitask Learning</h3>
+    <p>
+        Multitask learning has shown strong potential in medical image analysis, where related tasks such as
+        classification, segmentation, reconstruction, or attribute estimation can share informative features.
+        Prior work in thyroid imaging has explored joint segmentation and classification, as well as region-prior–
+        guided attention, but typically using CNN-only backbones and fully supervised training.
+    </p>
+    <p>
+        Recent multitask frameworks in other domains also combine reconstruction with downstream tasks to improve
+        representation quality and label efficiency. Inspired by this, SSMT-Net jointly optimizes nodule and gland
+        segmentation, explicit nodule size estimation, and image reconstruction within a hybrid CNN–Transformer
+        architecture, yielding a more comprehensive and robust modeling of thyroid ultrasound data.
+    </p>
+
+    <div class="figure">
+        <img src="assets/T1.JPG" alt="Comparison of related methods">
+        <div class="figure-caption">
+            High-level comparison of representative thyroid nodule segmentation methods in terms of backbone
+            (CNN vs. Transformer) and multitask learning support. SSMT-Net combines CNN and Transformer components
+            with a full multitask design.
+        </div>
+    </div>
+</section>
+
+<section class="content-section" id="method">
+    <h2>3. Proposed Method</h2>
+
+    <h3>3.1 Overall Architecture</h3>
+    <p>
+        SSMT-Net consists of four main components: a hybrid encoder, a dual segmentation decoder, a reconstruction
+        module, and a nodule size estimator. The encoder extracts multi-scale features from the input ultrasound image.
+        The dual-decoder module predicts high-resolution masks for both the thyroid gland and the nodule, while the
+        reconstruction path enforces feature consistency by reconstructing the original image. A dedicated regression
+        head predicts nodule size, injecting clinically meaningful scale priors into the learning process.
+    </p>
+
+    <div class="figure">
+        <img src="assets/network.jpg" alt="Overview of SSMT-Net">
+        <div class="figure-caption">
+            Overview of SSMT-Net. A CNN–Transformer encoder feeds three heads: dual segmentation decoders for gland
+            and nodule, a reconstruction decoder, and a nodule-size regression head, enabling semi-supervised
+            multitask learning.
+        </div>
+    </div>
+
+    <h3>3.2 Image Encoding with Transformer-Enhanced Features</h3>
+    <p>
+        The encoder combines convolutional layers with Transformer blocks. The input image is split into patches that
+        are linearly projected into a latent embedding space and augmented with learnable positional encodings.
+        Stacked multi-head self-attention and MLP layers then model long-range dependencies between patches. These
+        Transformer features are fused with CNN feature maps to preserve both local texture and global context.
+    </p>
+
+    <h3>3.3 Dual-Decoder Module for Segmentation</h3>
+    <p>
+        The dual-decoder module follows a U-Net style layout with skip connections from the encoder. One decoder
+        focuses on thyroid gland segmentation (auxiliary task), while the other targets nodule segmentation (primary
+        task). Each decoder integrates CNN upsampling blocks and Transformer-based mask prediction, where learnable
+        query vectors are iteratively refined through self- and cross-attention with encoder features.
+    </p>
+    <p>
+        A coarse-to-fine attention refinement mechanism restricts attention progressively to predicted foreground
+        regions. By masking out background tokens during subsequent attention steps, the model sharpens nodule
+        boundaries and reduces false positives, particularly for small or low-contrast nodules.
+    </p>
+
+    <h3>3.4 Nodule Size Prediction</h3>
+    <p>
+        Nodule size is a clinically important biomarker, with treatment guidelines often using size thresholds to
+        decide biopsy or follow-up. SSMT-Net includes a regression head that takes encoder features and predicts a
+        normalized nodule size. This auxiliary task regularizes the feature space to be scale-aware and encourages
+        the segmentation branch to produce morphologically consistent boundaries.
+    </p>
+
+    <h3>3.5 Reconstruction Module</h3>
+    <p>
+        To exploit unlabeled ultrasound scans, SSMT-Net incorporates an image reconstruction branch. Aggregated
+        CNN and Transformer features are passed through a decoder that reconstructs the input image. Training this
+        branch with a robust Charbonnier loss encourages the encoder to learn noise-tolerant, structure-aware
+        representations well aligned with ultrasound characteristics.
+    </p>
+
+    <h3>3.6 Semi-Supervised Multitask Training</h3>
+    <p>
+        Training proceeds in two phases. In the <em>unsupervised phase</em>, only the reconstruction path is optimized
+        using both labeled and unlabeled scans, allowing the encoder to learn generic ultrasound features. In the
+        subsequent <em>supervised phase</em>, all branches are trained jointly: nodule segmentation, gland segmentation,
+        nodule size prediction, and reconstruction.
+    </p>
+    <p>
+        The total loss is a weighted combination of Dice losses for nodule and gland masks, a regression loss for size,
+        and reconstruction loss. Nodule segmentation receives the highest weight to keep it as the primary objective,
+        while auxiliary tasks provide complementary supervision that improves robustness and generalization.
+    </p>
+</section>
+
+<section class="content-section" id="experiments">
+    <h2>4. Experiments</h2>
+
+    <h3>4.1 Experimental Settings</h3>
+    <p>
+        SSMT-Net is evaluated on two public thyroid ultrasound datasets: TN3K and DDTI, with TG3K used as an
+        additional source of gland images for auxiliary tasks. Images are preprocessed by normalization and resizing
+        to a fixed resolution, followed by standard augmentations such as flipping, rotation, zoom-out, and stitching.
+    </p>
+    <p>
+        The network employs a ResNet-50 backbone coupled with a Vision Transformer (Base, 16×16 patches) as the
+        encoder. Training uses the Adam optimizer with cosine learning-rate scheduling over 300 epochs, evaluated via
+        Intersection-over-Union (IoU) and Dice Similarity Coefficient (DSC).
+    </p>
+
+    <h3>4.2 Comparison with State-of-the-Art Methods</h3>
+    <p>
+        On TN3K, SSMT-Net achieves state-of-the-art performance, outperforming prior CNN-based and hybrid methods
+        such as TRFE+, SHAN, Deblurring-MIM, TnSeg, US-Net, CIL-Net, and others. The model improves IoU and DSC
+        by several absolute percentage points compared to the best competing method, demonstrating the benefit of
+        combining semi-supervision, multitask learning, and hybrid CNN–Transformer encoders.
+    </p>
+
+    <h3>4.3 Ablation Study</h3>
+    <p>
+        Ablation experiments progressively enable reconstruction, gland segmentation, and size prediction. Starting
+        from a TransUNet-like baseline, adding reconstruction alone already yields performance gains by improving
+        representation quality. Introducing gland segmentation further refines localization through anatomical
+        context, while size prediction injects structural priors that sharpen small nodules.
+    </p>
+    <p>
+        The full SSMT-Net configuration, with all auxiliary tasks active, achieves the highest IoU and DSC. Auxiliary
+        metrics, such as gland segmentation accuracy and nodule size mean absolute error, confirm that these tasks
+        are learned effectively and contribute to the final segmentation performance.
+    </p>
+
+    <div class="figure">
+        <img src="assets/Ablation_tn3k.jpg" alt="Visual ablation results">
+        <div class="figure-caption">
+            Qualitative comparison of different SSMT-Net variants. The full model produces cleaner and more accurate
+            contours, particularly for small or ambiguous nodules.
+        </div>
+    </div>
+
+    <h3>4.4 Robustness and Transferability</h3>
+    <p>
+        Robustness is further validated on DDTI under different training regimes. When evaluated zero-shot using a
+        model trained on TN3K, SSMT-Net already matches or exceeds several existing methods. Fine-tuning the decoder
+        on only a small fraction of DDTI greatly improves performance, indicating that the encoder learns transferable,
+        domain-robust representations that adapt well to new datasets with limited annotations.
+    </p>
+</section>
+
+<section class="content-section conclusion" id="conclusion">
+    <h2>5. Conclusion</h2>
+    <p>
+        SSMT-Net introduces a semi-supervised multitask framework for thyroid nodule segmentation in ultrasound images.
+        By combining a CNN–Transformer encoder with dual segmentation decoders, an image reconstruction module, and a
+        nodule size estimator, the network leverages both labeled and unlabeled data while integrating complementary
+        anatomical and morphological cues.
+    </p>
+    <p>
+        Experiments on TN3K and DDTI show that SSMT-Net achieves state-of-the-art performance and robust
+        generalization under scarce labels. The auxiliary tasks not only improve segmentation quality but also provide
+        clinically meaningful outputs such as gland masks and size estimates. Future work may explore additional
+        self-supervised objectives, such as masked modeling or contrastive learning, within the same two-phase
+        training schedule to further enhance label efficiency in ultrasound imaging.
+    </p>
+</section>
+
+<section class="content-section" id="acknowledgements">
+    <h2>Acknowledgements</h2>
+    <p>
+        This work is partially supported by the National Research Foundation of Korea (NRF) grant funded by the Korea
+        government (MSIT) and by the Institute of Information & Communications Technology Planning & Evaluation (IITP)
+        grant under the Artificial Intelligence Graduate School Program at Hanyang University.
+    </p>
+</section>
+
+<aside>
+    <div class="navigation">
+        <h3>Contents</h3>
+        <ul>
+            <li><a href="#introduction">1. Introduction</a></li>
+            <li><a href="#related-work">2. Related Work</a></li>
+            <li><a href="#method">3. Proposed Method</a></li>
+            <li><a href="#experiments">4. Experiments</a></li>
+            <li><a href="#conclusion">5. Conclusion</a></li>
+            <li><a href="#acknowledgements">Acknowledgements</a></li>
+        </ul>
+    </div>
+
+    <a href="SSMT-Net-paper.pdf" class="btn" target="_blank">Access Paper</a>
+</aside>
 
     <footer>
         <div class="container">
