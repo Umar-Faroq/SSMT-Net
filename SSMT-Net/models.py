@@ -16,7 +16,6 @@ from torch.nn import Conv2d, Dropout, LayerNorm, Linear, Softmax
 from torch.nn.modules.utils import _pair
 from torch.utils.data import Dataset
 
-
 ATTENTION_Q = "MultiHeadDotProductAttention_1/query"
 ATTENTION_K = "MultiHeadDotProductAttention_1/key"
 ATTENTION_V = "MultiHeadDotProductAttention_1/value"
